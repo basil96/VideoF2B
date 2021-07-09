@@ -24,12 +24,10 @@ from tkinter import simpledialog as tkSimpleDialog
 import cv2
 import numpy as np
 
+import common
+
 
 class CalCamera:
-    # some default lengths, in meters
-    DEFAULT_FLIGHT_RADIUS = 21.0
-    DEFAULT_MARKER_RADIUS = 25.0
-    DEFAULT_MARKER_HEIGHT = 1.5
 
     def __init__(self, frame_size, calibrationPath=None,
                  flight_radius=None, marker_radius=None, marker_height=None,
@@ -66,6 +64,7 @@ class CalCamera:
         self.is_fisheye = None
         self.mtx = None
         self.dist = None
+        self.dist_zero = None
         self.roi = None
         self.newcameramtx = None
         self.map1 = None
@@ -83,6 +82,7 @@ class CalCamera:
                 self.dist = npzfile['dist']
                 self.roi = npzfile['roi']
                 self.newcameramtx = npzfile['newcameramtx']
+                self.dist_zero = np.zeros_like(self.dist)
 
                 # Recalculate matrix and roi in case video from this camera was scaled after recording.
                 newcameramtx, roi = cv2.getOptimalNewCameraMatrix(
@@ -106,19 +106,19 @@ class CalCamera:
                     self.balance = float(npzfile['balance'])
 
                 self.flightRadius = self.flightRadius or tkSimpleDialog.askfloat(
-                    'Input', f'Flight radius (m) (Cancel = {CalCamera.DEFAULT_FLIGHT_RADIUS} m):')
+                    'Input', f'Flight radius (m) (Cancel = {common.DEFAULT_FLIGHT_RADIUS} m):')
                 if self.flightRadius is None:
-                    self.flightRadius = CalCamera.DEFAULT_FLIGHT_RADIUS
+                    self.flightRadius = common.DEFAULT_FLIGHT_RADIUS
 
                 self.markRadius = self.markRadius or tkSimpleDialog.askfloat(
-                    'Input', f'Height markers distance to center (m) (Cancel = {CalCamera.DEFAULT_MARKER_RADIUS} m)')
+                    'Input', f'Height markers distance to center (m) (Cancel = {common.DEFAULT_MARKER_RADIUS} m)')
                 if self.markRadius is None:
-                    self.markRadius = CalCamera.DEFAULT_MARKER_RADIUS
+                    self.markRadius = common.DEFAULT_MARKER_RADIUS
 
                 self.markHeight = self.markHeight or tkSimpleDialog.askfloat(
-                    'Input', f'Height markers: height above center of circle (m) (Cancel = {CalCamera.DEFAULT_MARKER_HEIGHT} m)')
+                    'Input', f'Height markers: height above center of circle (m) (Cancel = {common.DEFAULT_MARKER_HEIGHT} m)')
                 if self.markHeight is None:
-                    self.markHeight = CalCamera.DEFAULT_MARKER_HEIGHT
+                    self.markHeight = common.DEFAULT_MARKER_HEIGHT
             except:
                 cal_err_str = 'Error loading calibration file'
                 self.logger.error(cal_err_str)
@@ -207,7 +207,7 @@ class CalCamera:
             if self.imagePoints[NumRefPoints-1, 1] > 0:
                 _ret, self.rvec, self.tvec = cv2.solvePnP(objectPoints, self.imagePoints,
                                                           self.newcameramtx,
-                                                          np.zeros_like(self.dist),
+                                                          self.dist_zero,
                                                           cv2.SOLVEPNP_ITERATIVE)
                 # precalculate all pieces necessary for line/sphere intersections
                 self.rmat = None
@@ -218,6 +218,7 @@ class CalCamera:
                 self.rtvec = rmat_inv.dot(self.tvec)
                 # Direct result: camera location in world coordinates is where the scaling factor = 0
                 self.cam_pos = -self.rtvec
+                cam_d = np.linalg.norm(self.cam_pos)
 
                 self.logger.info(f'imagePoints =\n{self.imagePoints}')
                 self.logger.debug('Matrices and vectors for 3D tracking: =====================')
@@ -231,6 +232,7 @@ class CalCamera:
                 self.logger.debug(f'rtvec = {type(self.rtvec)}\n{self.rtvec}')
                 self.logger.debug('End of matrices and vectors for 3D tracking ===============')
                 self.logger.info(f'world cam location =\n{self.cam_pos}')
+                self.logger.info(f'world cam straight distance from sphere center = {cam_d:.3f}')
 
                 self.Located = True
                 cv2.destroyWindow(self.calWindowName)
