@@ -34,7 +34,7 @@ class TestSerialization:
             sphere_offset=so,
             loc_pts=pts
         )
-        flight_path = test_path.with_suffix('.flight')
+        flight_path = (test_path / v.stem).with_suffix('.flight')
         f1.write(flight_path)
         assert flight_path.exists()
         f2 = Flight.read(flight_path)
