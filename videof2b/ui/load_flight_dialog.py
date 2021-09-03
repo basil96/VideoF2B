@@ -100,6 +100,10 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         self.meas_grid.addWidget(self.marker_height_lbl, 3, 1, 1, 1)
         self.meas_grid.addWidget(self.marker_height_txt, 3, 2, 1, 1)
         #
+        self.read_lbl = QtWidgets.QLabel('Read a flight from:', self)
+        self.read_edit = PathEdit(self, caption='Load a flight file')
+        self.read_edit.filters = "Flight files (*.flight);;All files (*)"
+        #
         self.load_btn = QtWidgets.QPushButton('Load', self)
         self.load_btn.setDefault(True)
         self.cancel_btn = QtWidgets.QPushButton('Cancel', self)
@@ -113,6 +117,8 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         self.main_layout.addWidget(self.cal_path_txt)
         self.main_layout.addWidget(self.skip_locate_chk)
         self.main_layout.addLayout(self.meas_grid)
+        self.main_layout.addWidget(self.read_lbl)
+        self.main_layout.addWidget(self.read_edit)
         self.main_layout.addSpacerItem(QtWidgets.QSpacerItem(20, 20))
         self.main_layout.addLayout(self.bottom_layout)
 
@@ -122,22 +128,27 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         '''
         if not self._validate():
             return None  # Keeps the window up
-        self.flight = Flight(
-            self.video_path_txt.path,
-            cal_path=self.cal_path_txt.path,
-            is_live=self.live_chk.isChecked(),
-            skip_locate=self.skip_locate_chk.isChecked(),
-            # TODO: use proper validation for these numeric fields!
-            flight_radius=float(self.flight_radius_txt.text()),
-            marker_radius=float(self.marker_radius_txt.text()),
-            marker_height=float(self.marker_height_txt.text())
-            # TODO: include `sphere_offset` as well. Add a grid widget to UI for the XYZ values.
-        )
-        self.settings.setValue('mru/video_dir', self.video_path_txt.path.parent)
-        # Cal path is optional, so check it first
-        cal_path = self.cal_path_txt.path
-        if path_to_str(cal_path) and cal_path.exists():
-            self.settings.setValue('mru/cal_dir', cal_path.parent)
+        if self.read_edit.path is not None:
+            # Load from file
+            self.flight = Flight.read(self.read_edit.path)
+        else:
+            # Load from UI
+            self.flight = Flight(
+                self.video_path_txt.path,
+                cal_path=self.cal_path_txt.path,
+                is_live=self.live_chk.isChecked(),
+                skip_locate=self.skip_locate_chk.isChecked(),
+                # TODO: use proper validation for these numeric fields!
+                flight_radius=float(self.flight_radius_txt.text()),
+                marker_radius=float(self.marker_radius_txt.text()),
+                marker_height=float(self.marker_height_txt.text())
+                # TODO: include `sphere_offset` as well. Add a grid widget to UI for the XYZ values.
+            )
+            self.settings.setValue('mru/video_dir', self.video_path_txt.path.parent)
+            # Cal path is optional, so check it first
+            cal_path = self.cal_path_txt.path
+            if path_to_str(cal_path) and cal_path.exists():
+                self.settings.setValue('mru/cal_dir', cal_path.parent)
         # Do not proceed if flight failed to load
         if not self.flight.is_ready:
             QtWidgets.QMessageBox.critical(
@@ -161,6 +172,8 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
     def _validate(self) -> bool:
         '''Validate user inputs.'''
         result = True
+        if self.read_edit.path is not None and self.read_edit.path.exists():
+            return result
         # TODO: this is rudimentary for now. Using a Qt Model with field validators would be more ideal.
         # Then we could highlight invalid fields instead of popping up a bunch of error messageboxes.
         if not self._validate_path(self.video_path_txt.path, 'Please specify a valid video source.'):

@@ -88,6 +88,7 @@ class Flight(QObject):
         )
         # Locator points. This list grows and shrinks during the locating procedure.
         self.loc_pts = kwargs.pop('loc_pts', [])
+        self.is_located = len(self.loc_pts) == 4
         # Log some basic info.
         log.info('Creating a new flight =========')
         log.info(f'      Video path: {self.video_path.name}')
@@ -97,6 +98,9 @@ class Flight(QObject):
         log.info(f'    mark radius = {self.marker_radius} m')
         log.info(f'    mark height = {self.marker_height} m')
         log.info(f'  sphere offset = {self.sphere_offset} m')
+        log.info(f' locator points = {self.loc_pts}')
+        log.info(f'  is calibrated = {self.is_calibrated}')
+        log.info(f'     is located = {self.is_located}')
         # Load the video stream
         self._load_stream()
         # Log some more to report the stream's status.
@@ -153,3 +157,36 @@ class Flight(QObject):
         else:
             msg = 'All points defined.'
         self.locator_points_changed.emit(self.loc_pts, msg)
+
+    def write(self, path: Path):
+        import yaml
+        log.info(f'Saving this flight to {path}')
+        data = {
+            'vid_path': str(self.video_path),
+            'cal_path': str(self.calibration_path),
+            'is_live': self.is_live,
+            'flight_radius': self.flight_radius,
+            'marker_radius': self.marker_radius,
+            'marker_height': self.marker_height,
+            'sphere_offset': self.sphere_offset,
+            'loc_pts': self.loc_pts,
+        }
+        yaml.safe_dump(data, path.open(mode='w'))
+
+    @staticmethod
+    def read(path: Path):
+        import yaml
+        data = yaml.safe_load(path.open('r'))
+        pts = [(x, y) for x, y in data['loc_pts']]
+        result = Flight(
+            Path(data['vid_path']),
+            bool(data['is_live']),
+            Path(data['cal_path']),
+            flight_radius=float(data['flight_radius']),
+            marker_radius=float(data['marker_radius']),
+            marker_height=float(data['marker_height']),
+            sphere_offset=tuple(data['sphere_offset']),
+            loc_pts=pts,
+        )
+        result._load_stream()
+        return result
