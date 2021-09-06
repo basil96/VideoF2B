@@ -132,28 +132,32 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
             # Load from file
             self.flight = Flight.read(self.read_edit.path)
         else:
-            # Load from UI
-            self.flight = Flight(
-                self.video_path_txt.path,
-                cal_path=self.cal_path_txt.path,
-                is_live=self.live_chk.isChecked(),
-                skip_locate=self.skip_locate_chk.isChecked(),
-                # TODO: use proper validation for these numeric fields!
-                flight_radius=float(self.flight_radius_txt.text()),
-                marker_radius=float(self.marker_radius_txt.text()),
-                marker_height=float(self.marker_height_txt.text())
-                # TODO: include `sphere_offset` as well. Add a grid widget to UI for the XYZ values.
-            )
-            self.settings.setValue('mru/video_dir', self.video_path_txt.path.parent)
-            # Cal path is optional, so check it first
-            cal_path = self.cal_path_txt.path
-            if path_to_str(cal_path) and cal_path.exists():
-                self.settings.setValue('mru/cal_dir', cal_path.parent)
+            file_not_found_msg = ''
+            try:
+                # Load from UI
+                self.flight = Flight(
+                    self.video_path_txt.path,
+                    cal_path=self.cal_path_txt.path,
+                    is_live=self.live_chk.isChecked(),
+                    skip_locate=self.skip_locate_chk.isChecked(),
+                    # TODO: use proper validation for these numeric fields!
+                    flight_radius=float(self.flight_radius_txt.text()),
+                    marker_radius=float(self.marker_radius_txt.text()),
+                    marker_height=float(self.marker_height_txt.text())
+                    # TODO: include `sphere_offset` as well. Add a grid widget to UI for the XYZ values.
+                )
+                self.settings.setValue('mru/video_dir', self.video_path_txt.path.parent)
+                # Cal path is optional, so check it first
+                cal_path = self.cal_path_txt.path
+                if path_to_str(cal_path) and cal_path.exists():
+                    self.settings.setValue('mru/cal_dir', cal_path.parent)
+            except FileNotFoundError as file_err:
+                file_not_found_msg = f'\nFile not found: {self.video_path_txt.path}'
         # Do not proceed if flight failed to load
         if not self.flight.is_ready:
             QtWidgets.QMessageBox.critical(
                 self, 'Error',
-                'Failed to load video source.',
+                f'Failed to load video source.{file_not_found_msg}',
                 QtWidgets.QMessageBox.Ok
             )
             return None  # Keeps the window up
