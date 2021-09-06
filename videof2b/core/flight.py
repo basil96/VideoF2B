@@ -20,6 +20,7 @@
 import logging
 from pathlib import Path
 
+import toml
 from imutils.video import FileVideoStream
 from PySide6.QtCore import QObject, Signal
 from videof2b.core import common
@@ -111,6 +112,8 @@ class Flight(QObject):
 
     def _load_stream(self):
         '''Load this flight's video stream.'''
+        if not self.is_live and not self.video_path.exists():
+            raise FileNotFoundError(f'Video path not found: {self.video_path.resolve().absolute()}')
         self.cap = FileVideoStream(str(self.video_path)).start()
         # Check if we succeeded.
         if self.cap.isOpened():
@@ -159,7 +162,6 @@ class Flight(QObject):
         self.locator_points_changed.emit(self.loc_pts, msg)
 
     def write(self, path: Path):
-        import yaml
         log.info(f'Saving this flight to {path}')
         data = {
             'vid_path': str(self.video_path),
@@ -171,12 +173,12 @@ class Flight(QObject):
             'sphere_offset': self.sphere_offset,
             'loc_pts': self.loc_pts,
         }
-        yaml.safe_dump(data, path.open(mode='w'))
+        toml.dump(data, path.open(mode='w'))
 
     @staticmethod
     def read(path: Path):
-        import yaml
-        data = yaml.safe_load(path.open('r'))
+        log.info(f'Reading a flight from {path}')
+        data = toml.load(path.open('r'))
         pts = [(x, y) for x, y in data['loc_pts']]
         result = Flight(
             Path(data['vid_path']),
@@ -188,5 +190,4 @@ class Flight(QObject):
             sphere_offset=tuple(data['sphere_offset']),
             loc_pts=pts,
         )
-        result._load_stream()
         return result
