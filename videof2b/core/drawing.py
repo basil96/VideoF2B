@@ -572,7 +572,7 @@ class Drawing:
 
     def reset_center(self):
         '''Reset sphere center to default.'''
-        self.center = common.DEFAULT_CENTER.copy()
+        self.center = np.float32(common.DEFAULT_CENTER)
         self._evaluate_center()
 
     def _evaluate_center(self):
