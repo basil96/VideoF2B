@@ -156,7 +156,8 @@ class VideoProcessor(QObject, StoreProperties):
         self._is_size_restorable: bool = False
         self._detector: Detector = None
         self._azimuth: float = None
-        self._sphere_offset = None
+        # TODO: _sphere_offset needs attention.
+        # self._sphere_offset = None
         self._data_writer = None
         self._fig_tracker: figtrack.FigureTracker = None
         self._is_fig_in_progress = False
@@ -214,7 +215,7 @@ class VideoProcessor(QObject, StoreProperties):
         #       for Drawing, but Drawing API uses incremental positioning right now.
         #       Right now the two offsets go out of sync. The effect may be visible
         #       during (re)locating if offset is nonzero.
-        self._sphere_offset = self.flight.sphere_offset
+        # self._sphere_offset = self.flight.sphere_offset
         # Prepare for 3D tracking
         self._prep_fig_tracking()
         # Misc
@@ -449,7 +450,7 @@ class VideoProcessor(QObject, StoreProperties):
             self.ret_code = ProcessorReturnCodes.POSE_ESTIMATION_FAILED
             return False
         # Finally, locate the artist.
-        self._artist.locate(self.cam, self.flight, center=self._sphere_offset)
+        self._artist.locate(self.cam, self.flight)
         # Signal the updated state of AR geometry availability.
         self.ar_geometry_available.emit(self.flight.is_located)
         log.debug('Exiting VideoProcessor._locate()')

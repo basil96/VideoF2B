@@ -46,10 +46,12 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         #       for proper cohesion.
         # see https://doc.qt.io/qtforpython/overviews/model-view-programming.html#models
         self.flight = None
+        self.save_flight_flag = False
         self.setup_ui()
         self.setWindowTitle('Load a Flight')
         # pylint: disable=no-member
         self.skip_locate_chk.stateChanged.connect(self.on_skip_locate_changed)
+        self.save_flight_chk.stateChanged.connect(self.on_save_flight_changed)
         self.cancel_btn.clicked.connect(self.reject)
         self.load_btn.clicked.connect(self.accept)
 
@@ -103,6 +105,8 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         self.read_lbl = QtWidgets.QLabel('Read a flight from:', self)
         self.read_edit = PathEdit(self, caption='Load a flight file')
         self.read_edit.filters = "Flight files (*.flight);;All files (*)"
+        self.save_flight_chk = QtWidgets.QCheckBox('Save flight file', self)
+        self.save_flight_chk.setChecked(self.save_flight_flag)
         #
         self.load_btn = QtWidgets.QPushButton('Load', self)
         self.load_btn.setDefault(True)
@@ -119,8 +123,13 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         self.main_layout.addLayout(self.meas_grid)
         self.main_layout.addWidget(self.read_lbl)
         self.main_layout.addWidget(self.read_edit)
+        self.main_layout.addWidget(self.save_flight_chk)
         self.main_layout.addSpacerItem(QtWidgets.QSpacerItem(20, 20))
         self.main_layout.addLayout(self.bottom_layout)
+
+    def on_save_flight_changed(self):
+        '''Set the "save flight" flag whenever the checkbox is checked.'''
+        self.save_flight_flag = self.save_flight_chk.isChecked()
 
     def accept(self) -> None:
         '''Create a Flight instance if all inputs are valid.
