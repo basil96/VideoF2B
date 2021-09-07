@@ -27,7 +27,6 @@ from math import cos, pi
 from pathlib import Path
 from typing import Tuple
 
-import numpy as np
 import platformdirs
 import videof2b
 
@@ -38,7 +37,7 @@ DEFAULT_MARKER_HEIGHT = 1.5
 # Default radius in all figure turns, in meters
 DEFAULT_TURN_RADIUS = 1.5
 # Default sphere center, in meters
-DEFAULT_CENTER = np.float32([0., 0., 0.])
+DEFAULT_CENTER = (0., 0., 0.)
 # Frequently used chunks of pi
 HALF_PI = 0.5 * pi
 QUART_PI = 0.25 * pi
