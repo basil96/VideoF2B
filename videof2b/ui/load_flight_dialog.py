@@ -103,7 +103,11 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         self.meas_grid.addWidget(self.marker_height_txt, 3, 2, 1, 1)
         #
         self.read_lbl = QtWidgets.QLabel('Read a flight from:', self)
-        self.read_edit = PathEdit(self, caption='Load a flight file')
+        self.read_edit = PathEdit(
+            self, PathEditType.Files,
+            'Load a flight file',
+            str_to_path(self.settings.value('mru/video_dir'))
+        )
         self.read_edit.filters = "Flight files (*.flight);;All files (*)"
         self.save_flight_chk = QtWidgets.QCheckBox('Save flight file', self)
         self.save_flight_chk.setChecked(self.save_flight_flag)

@@ -162,7 +162,7 @@ class Flight(QObject):
         self.locator_points_changed.emit(self.loc_pts, msg)
 
     def write(self, path: Path):
-        log.info(f'Saving this flight to {path}')
+        log.info(f'Saving this flight to {path.name}')
         data = {
             'vid_path': str(self.video_path),
             'cal_path': str(self.calibration_path),
@@ -177,7 +177,7 @@ class Flight(QObject):
 
     @staticmethod
     def read(path: Path):
-        log.info(f'Reading a flight from {path}')
+        log.info(f'Reading a flight from {path.name}')
         data = toml.load(path.open('r'))
         pts = [(x, y) for x, y in data['loc_pts']]
         result = Flight(
