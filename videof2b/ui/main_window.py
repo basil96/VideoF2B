@@ -353,6 +353,7 @@ class MainWindow(QtWidgets.QMainWindow, UIMainWindow, StoreProperties):
         self._proc_thread = None
         self._last_flight = None
         self._calibrator = None
+        self.save_flight_flag = False
         # pylint: disable=no-member
         # Set up signals and slots that are NOT related to VideoProcessor
         self.act_file_load.triggered.connect(self.on_load_flight)
@@ -452,6 +453,10 @@ class MainWindow(QtWidgets.QMainWindow, UIMainWindow, StoreProperties):
             self.video_window.is_mouse_enabled = False
             self.instruct_lbl.setText('')
             self.instruct_lbl.hide()
+            if self.save_flight_flag:
+                self._last_flight.write(
+                    self._last_flight.video_path.with_suffix('.flight')
+                )
             # Signal to the processor that we're done.
             self.locating_completed.emit()
             self._pre_processing()
@@ -598,6 +603,7 @@ class MainWindow(QtWidgets.QMainWindow, UIMainWindow, StoreProperties):
             self._init_proc()
             # At this point, the flight data is validated. Load it into the processor.
             self._last_flight = diag.flight
+            self.save_flight_flag = diag.save_flight_flag
             self._load_flight(diag.flight)
 
     def _load_flight(self, flight):

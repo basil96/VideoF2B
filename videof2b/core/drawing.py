@@ -309,9 +309,6 @@ class Drawing:
         If drawing AR geometry is also required, supply the following kwargs:
             `cam`: instance of CalCamera.
             `flight`: instance of Flight.
-            `center`: 3-tuple or ndarray of (x, y, z) location of drawn sphere
-                      with respect to the world center defined by markers.
-                      Default is `videof2b.core.common.DEFAULT_CENTER`, which is the origin (0, 0, 0).
             Optional:
                 `axis`: True to draw vertical axis, False otherwise.
                 `point_density`: number of arc points per full circle.
@@ -403,7 +400,7 @@ class Drawing:
             self.R = flight.flight_radius
             self.marker_radius = flight.marker_radius
             self.marker_height = flight.marker_height
-            center = kwargs.pop('center', common.DEFAULT_CENTER.copy())
+            center = flight.sphere_offset
             # Ensure it's a numpy array (allow tuple, list as input).
             # TODO: maybe it is safer to use `np.atleast_1d(center)` ?
             self.center = np.float32(center)
