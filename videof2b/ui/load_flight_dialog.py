@@ -106,7 +106,7 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         self.read_edit = PathEdit(
             self, PathEditType.Files,
             'Load a flight file',
-            str_to_path(self.settings.value('mru/video_dir'))
+            self.settings.value('mru/video_dir')
         )
         self.read_edit.filters = "Flight files (*.flight);;All files (*)"
         self.save_flight_chk = QtWidgets.QCheckBox('Save flight file', self)
