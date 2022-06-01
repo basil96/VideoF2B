@@ -104,7 +104,7 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         #
         self.read_lbl = QtWidgets.QLabel('Read a flight from:', self)
         self.read_edit = PathEdit(
-            self, PathEditType.Files,
+            self, PathEditType.FILES,
             'Load a flight file',
             self.settings.value('mru/video_dir')
         )
