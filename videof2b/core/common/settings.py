@@ -31,6 +31,7 @@ class Settings(QSettings):
 
     __defaults__ = {
         'core/enable_fisheye': False,
+        'core/enable_live_video': False,
         'mru/video_dir': Path('..'),
         'mru/cal_dir': Path('..'),
         'mru/crashreport_dir': Path('..'),

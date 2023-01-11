@@ -284,6 +284,11 @@ class UIMainWindow:
         action.setShortcut(QtCore.Qt.CTRL | QtCore.Qt.SHIFT | QtCore.Qt.Key_R)
         self.act_restart_flight = action
         main_window.addAction(self.act_restart_flight)
+        #
+        action = QtGui.QAction(main_window)
+        action.setShortcut(QtCore.Qt.Key_R)
+        self.act_start_recording = action
+        main_window.addAction(self.act_start_recording)
         # Finish
         self.setLayout(self.main_layout)
 
@@ -294,6 +299,7 @@ class MainWindow(QtWidgets.QMainWindow, UIMainWindow, StoreProperties):
     # Signals
     stop_processor = QtCore.Signal()
     locating_completed = QtCore.Signal()
+    start_live_recording = QtCore.Signal()
     clear_track = QtCore.Signal()
     figure_state_changed = QtCore.Signal(FigureTypes, bool)
     figure_diags_changed = QtCore.Signal(bool)
@@ -359,6 +365,7 @@ class MainWindow(QtWidgets.QMainWindow, UIMainWindow, StoreProperties):
         # TODO: The restart action is currently undocumented
         # because it's a nice feature for developer convenience. Should it become visible?
         self.act_restart_flight.triggered.connect(self.on_restart_flight)
+        self.act_start_recording.triggered.connect(self.on_start_recording)
         self.act_file_exit.triggered.connect(self.close)
         self.act_tools_cal_cam.triggered.connect(self.on_calibrate_cam)
         self.act_tools_place_cam.triggered.connect(self.on_place_cam)
@@ -523,6 +530,7 @@ class MainWindow(QtWidgets.QMainWindow, UIMainWindow, StoreProperties):
         self._proc.locating_started.connect(self.on_locating_started, QtCore.Qt.QueuedConnection)
         self._proc.locator_points_changed.connect(self.on_loc_pts_changed, QtCore.Qt.QueuedConnection)
         self._proc.locator_points_defined.connect(self.on_loc_pts_defined, QtCore.Qt.QueuedConnection)
+        self.start_live_recording.connect(self._proc.start_live_recording, QtCore.Qt.QueuedConnection)
         self.video_window.point_added.connect(self._proc.add_locator_point, QtCore.Qt.QueuedConnection)
         self.video_window.point_removed.connect(self._proc.pop_locator_point, QtCore.Qt.QueuedConnection)
         self.figure_state_changed.connect(self._proc.update_figure_state, QtCore.Qt.QueuedConnection)
@@ -645,6 +653,9 @@ class MainWindow(QtWidgets.QMainWindow, UIMainWindow, StoreProperties):
         self._last_flight.restart()
         self._load_flight(self._last_flight)
 
+    def on_start_recording(self):
+        self.start_live_recording.emit()
+
     def on_proc_starting(self):
         '''Handle required preparations when the processing thread starts.'''
         # Do not allow loading of a Flight while we are processing a loaded one.
@@ -657,6 +668,7 @@ class MainWindow(QtWidgets.QMainWindow, UIMainWindow, StoreProperties):
         by VideoProcessor when its processing loop finishes.
         Also update the UI as appropriate.
         '''
+        log.debug('Entering `MainWindow.on_proc_finished`')
         # BEWARE: `_proc` is available here only because we arrange
         # the order of signal connections in `start_proc_thread()`
         # so that this runs before the processor instance is deleted.

@@ -24,6 +24,7 @@ import sys
 from traceback import format_exception
 
 from PySide6 import QtCore, QtWidgets
+from winrt import _winrt
 
 from videof2b.core.common import PD, get_app_metadata
 from videof2b.core.common.settings import Settings
@@ -151,6 +152,10 @@ def start():
         level = logging.INFO
     set_up_logging(PD.user_data_path, level=level)
     log.debug('Initializing application')
+    # Workaround for the STA/MTA conflict between winrt and Qt. This must be done prior to starting the GUI.
+    # See https://github.com/microsoft/xlang/issues/690#issuecomment-867950440
+    _winrt.uninit_apartment()
+    # Start the Application object
     qt_app = QtWidgets.QApplication()
     qt_app.setOrganizationName(my_name)
     qt_app.setApplicationName(my_name)
