@@ -87,7 +87,7 @@ class ProcessorSettings:
     # Rotation offset delta in degrees.
     sphere_rot_delta = 0.5
     # Folder where we write processed output files of live videos.
-    live_videos = Path('../VideoF2B_videos')
+    live_videos = Path('../VideoF2B_live_videos')
 
 
 class VideoProcessor(QObject, StoreProperties):
@@ -168,6 +168,7 @@ class VideoProcessor(QObject, StoreProperties):
         self._video_name = None
         self._frame_delta = None
         self.is_paused = False
+        self.is_recording = True
         # Set this flag during an event handler that requires frame update while paused.
         # This flag is just an optimization to keep the CPU
         # from being unnecessarily busy while we are paused.
@@ -263,7 +264,7 @@ class VideoProcessor(QObject, StoreProperties):
             live_dir_path = ProcessorSettings.live_videos
             if not live_dir_path.exists():
                 live_dir_path.mkdir(parents=True)
-            timestr = time.strftime("%Y%m%d-%H%M")
+            timestr = time.strftime("%Y-%m-%d@%H.%M.%S")
             result = FileVideoOutputStream(
                 live_dir_path / f'out_{timestr}.mp4',
                 self._fourcc, self._video_fps,
@@ -432,6 +433,21 @@ class VideoProcessor(QObject, StoreProperties):
         self.flight.on_locator_points_changed()
         self._keep_locating = True
         while self._keep_locating:
+            if self.flight.is_live:
+                # log.debug(f'in `_locate`, before read loop')
+                while self.flight.cap.more() and self._keep_locating:
+                    # log.debug(f'in `_locate`, start of read loop')
+                    self._frame = self.flight.cap.read()
+                    if self._frame is None:
+                        log.warning('empty live frame')
+                        continue
+                    self._frame_loc = self._frame
+                    self._frame = self._draw_loc_points(self.flight.loc_pts, self._frame)
+                    self.new_frame_available.emit(cv_img_to_qimg(self._frame))
+                    # Breathe, live dawg
+                    QCoreApplication.processEvents()
+                    # log.debug(f'in `_locate`, bottom of read loop')
+                time.sleep(0.050)
             # Breathe, dawg
             QCoreApplication.processEvents()
         log.debug(f'loc_pts after locating: {self.flight.loc_pts}')
@@ -455,6 +471,17 @@ class VideoProcessor(QObject, StoreProperties):
         log.debug('Exiting VideoProcessor._locate()')
         return True
 
+    def _draw_loc_points(self, points, img):
+        '''Draw the specified locator points in the given image.
+
+        :param points: list of locator points.
+        :param img: an image frame.
+        :return: image frame with the locator points drawn on it.
+        '''
+        for p in points:
+            img = cv2.circle(img, tuple(p), 6, (0, 255, 0))
+        return img
+
     def stop_locating(self):
         '''Cancel the flight locating procedure.'''
         self._keep_locating = False
@@ -473,12 +500,13 @@ class VideoProcessor(QObject, StoreProperties):
 
     def on_locator_points_changed(self, points, msg):
         '''Handles changes in locator points during the camera locating procedure.'''
+        if self._frame_loc is None:
+            return
         self.locator_points_changed.emit(points, msg)
         # Draw the current locator points in the locating frame.
         # Do not modify the locating frame, just a copy of it.
         img = self._frame_loc.copy()
-        for p in points:
-            img = cv2.circle(img, tuple(p), 6, (0, 255, 0))
+        img = self._draw_loc_points(points, img)
         self.new_frame_available.emit(cv_img_to_qimg(img))
 
     def on_locator_points_defined(self):
@@ -635,6 +663,11 @@ class VideoProcessor(QObject, StoreProperties):
         log.info(f'Input size: {self._inp_width} x {self._inp_height} px')
         log.info(f' Full size: {self._full_frame_size}')
 
+    def start_live_recording(self):
+        '''Start recording the live input stream.'''
+        log.info('Start recording live video.')
+        self.is_recording = True
+
     def stop(self):
         '''Respond to a "nice" request to stop our processing loop.'''
         log.debug('Entering `VideoProcessor.stop()`')
@@ -669,6 +702,8 @@ class VideoProcessor(QObject, StoreProperties):
         '''The main processing loop.'''
         log.debug('Entering `VideoProcessor._process()`')
         self._keep_processing = True
+        # If live video, do not start recording until user tells us to do so.
+        self.is_recording = not self.flight.is_live
         self.ret_code = ProcessorReturnCodes.NORMAL
         # --- Prepare for processing
         out_video_path = self.flight.video_path.with_name(f'{self._video_name}_out.mp4')
@@ -709,8 +744,6 @@ class VideoProcessor(QObject, StoreProperties):
                 continue
             num_consecutive_empty_frames = 0
 
-            self.frame_idx += 1
-
             if self.flight.is_calibrated:
                 # log.debug(f'frame.shape before undistort: {self._frame.shape}')
                 # log.debug(f'frame.data = {self._frame.data}')
@@ -735,6 +768,15 @@ class VideoProcessor(QObject, StoreProperties):
                 # ===========================================================
                 # if self.frame_idx == 1:
                 #     self._map_img_to_sphere(self._data_writer)
+
+            if not self.is_recording:
+                # Show current original frame until we start recording.
+                # TODO: indicate to user that they should press R when ready.
+                self.new_frame_available.emit(cv_img_to_qimg(self._frame))
+                QCoreApplication.processEvents()
+                continue
+
+            self.frame_idx += 1
 
             if self.is_paused:
                 self._fps.pause()
@@ -792,6 +834,9 @@ class VideoProcessor(QObject, StoreProperties):
         # ============================ END OF PROCESSING LOOP ===============================================
 
         log.debug('Processing loop ended, cleaning up...')
+        # Stop the stream.
+        # TODO: I get a warning here from opencv, though it doesn't seem to hurt anything. None of the suggested solutions work.
+        # [ WARN:0] global ...\opencv\modules\videoio\src\cap_msmf.cpp (438) `anonymous-namespace'::SourceReaderCB::~SourceReaderCB terminating async callback
         cap.stop()
         self._fps.stop()
         self._update_progress(forced=True)

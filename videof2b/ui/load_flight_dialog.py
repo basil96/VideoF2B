@@ -21,11 +21,12 @@ The dialog that loads the input video.
 
 from pathlib import Path
 
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 from videof2b.core.common import (DEFAULT_FLIGHT_RADIUS, DEFAULT_MARKER_HEIGHT,
                                   DEFAULT_MARKER_RADIUS)
-from videof2b.core.common.path import path_to_str
+from videof2b.core.common.path import path_to_str, str_to_path
 from videof2b.core.common.store import StoreProperties
+from videof2b.core.devices import CameraDevice
 from videof2b.core.flight import Flight
 from videof2b.ui import EXTENSIONS_VIDEO
 from videof2b.ui.widgets import PathEdit, PathEditType
@@ -49,6 +50,8 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         self.setup_ui()
         self.setWindowTitle('Load a Flight')
         # pylint: disable=no-member
+        self.on_live_state_changed()
+        self.live_chk.stateChanged.connect(self.on_live_state_changed)
         self.skip_locate_chk.stateChanged.connect(self.on_skip_locate_changed)
         self.cancel_btn.clicked.connect(self.reject)
         self.load_btn.clicked.connect(self.accept)
@@ -58,10 +61,9 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         self.main_layout = QtWidgets.QVBoxLayout(self)
         self.main_layout.setObjectName('main_layout')
         self.live_chk = QtWidgets.QCheckBox('&Live video', self)
-
-        # TODO: include the "Live video" checkbox when we support live video
-        self.live_chk.setVisible(False)
-
+        self.live_device_list = QtWidgets.QComboBox(self)
+        self.live_chk.setVisible(self.settings.value('core/enable_live_video'))
+        self.live_device_list.setVisible(self.live_chk.isVisible())
         self.video_path_lbl = QtWidgets.QLabel('Video source:', self)
         self.video_path_txt = PathEdit(
             self, PathEditType.FILES,
@@ -107,6 +109,7 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         self.bottom_layout.addWidget(self.load_btn)
         self.bottom_layout.addWidget(self.cancel_btn)
         self.main_layout.addWidget(self.live_chk)
+        self.main_layout.addWidget(self.live_device_list)
         self.main_layout.addWidget(self.video_path_lbl)
         self.main_layout.addWidget(self.video_path_txt)
         self.main_layout.addWidget(self.cal_path_lbl)
@@ -122,10 +125,16 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         '''
         if not self._validate():
             return None  # Keeps the window up
+        is_live = self.live_chk.isChecked()
+        video_path = self.video_path_txt.path
+        if is_live:
+            box_idx = self.live_device_list.currentIndex()
+            cam_idx = self.live_device_list.itemData(box_idx)
+            video_path = Path(str(cam_idx))
         self.flight = Flight(
-            self.video_path_txt.path,
+            video_path,
             cal_path=self.cal_path_txt.path,
-            is_live=self.live_chk.isChecked(),
+            is_live=is_live,
             skip_locate=self.skip_locate_chk.isChecked(),
             # TODO: use proper validation for these numeric fields!
             flight_radius=float(self.flight_radius_txt.text()),
@@ -133,7 +142,8 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
             marker_height=float(self.marker_height_txt.text())
             # TODO: include `sphere_offset` as well. Add a grid widget to UI for the XYZ values.
         )
-        self.settings.setValue('mru/video_dir', self.video_path_txt.path.parent)
+        if not is_live:
+            self.settings.setValue('mru/video_dir', self.video_path_txt.path.parent)
         # Cal path is optional, so check it first
         cal_path = self.cal_path_txt.path
         if path_to_str(cal_path) and cal_path.exists():
@@ -163,7 +173,8 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         result = True
         # TODO: this is rudimentary for now. Using a Qt Model with field validators would be more ideal.
         # Then we could highlight invalid fields instead of popping up a bunch of error messageboxes.
-        if not self._validate_path(self.video_path_txt.path, 'Please specify a valid video source.'):
+        if not self.live_chk.isChecked() and \
+                not self._validate_path(self.video_path_txt.path, 'Please specify a valid video source.'):
             result = False
         # TODO: calibration path can only be validated if we add a "is calibrated" checkbox
         #       to this dialog that enables AR-related data.
@@ -189,3 +200,23 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
     def _show_error_message(self, msg):
         '''Display a simple error messagebox to user.'''
         QtWidgets.QMessageBox.critical(self, 'Error', msg, QtWidgets.QMessageBox.Ok)
+
+    def on_live_state_changed(self):
+        '''Update UI when the state of the "is live" checkbox changes.'''
+        is_live = self.live_chk.isChecked()
+        self.live_device_list.setVisible(is_live)
+        self.live_device_list.setEnabled(is_live)
+        self.video_path_lbl.setDisabled(is_live)
+        self.video_path_txt.setDisabled(is_live)
+        if is_live:
+            self._populate_live_list()
+
+    def _populate_live_list(self):
+        '''Populate the list of live devices on demand.'''
+        cam = CameraDevice()
+        devices = cam.get_camera_info()
+        self.live_device_list.clear()
+        for device in devices:
+            cam_idx = device['camera_index']
+            cam_name = device['camera_name']
+            self.live_device_list.addItem(cam_name, userData=cam_idx)

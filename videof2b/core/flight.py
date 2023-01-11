@@ -68,6 +68,7 @@ class Flight(QObject):
         self.is_ready = False
         self.video_path = vid_path
         self.is_live = is_live
+        self.cap = None
         self.calibration_path = cal_path
         self.is_calibrated = cal_path is not None and cal_path.exists()
         self.is_located = False
@@ -107,7 +108,22 @@ class Flight(QObject):
 
     def _load_stream(self):
         '''Load this flight's video stream.'''
-        self.cap = FileVideoStream(str(self.video_path)).start()
+        video_path = str(self.video_path)
+        # Queue size for FileVideoStream. Default starts at 128.
+        frame_buffer = 128
+        if self.is_live:
+            # We don't know the stream's FPS ahead of time. Let's assume 30.
+            # For now, multiply the assumed FPS by the number of seconds
+            # of live stream that we want to reliably keep. This is effectively
+            # the max length of time that a live operator has available during a pause.
+            # TODO: this could be a PR for imutils. FileVideoStream could take `buffer_time` in constructor, obtain the FPS during init, and calculate its internal `queue_size`.
+            frame_buffer = 20 * 30
+            try:
+                video_path = int(video_path)
+            except ValueError:
+                # Not a USB cam, so just use the given string
+                pass
+        self.cap = FileVideoStream(video_path, queue_size=frame_buffer).start()
         # Check if we succeeded.
         if self.cap.isOpened():
             self.is_ready = True
