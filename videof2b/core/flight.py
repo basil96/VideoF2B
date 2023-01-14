@@ -73,6 +73,13 @@ class Flight(QObject):
         self.is_calibrated = cal_path is not None and cal_path.exists()
         self.is_located = False
         self.is_ar_enabled = True
+        cam_index = kwargs.pop('cam_index', None)
+        if self.is_live:
+            try:
+                cam_index = int(cam_index)
+            except ValueError:
+                pass
+        self.cam_index = cam_index
         self.skip_locate = kwargs.pop('skip_locate', False)
         self.flight_radius = kwargs.pop('flight_radius', common.DEFAULT_FLIGHT_RADIUS)
         self.marker_radius = kwargs.pop('marker_radius', common.DEFAULT_MARKER_RADIUS)
@@ -112,17 +119,22 @@ class Flight(QObject):
         # Queue size for FileVideoStream. Default starts at 128.
         frame_buffer = 128
         if self.is_live:
+            # The number of seconds of live stream that we want to reliably keep
+            # is multiplied by this factor so that the operator has the allotted
+            # allowance plus at least as much time for the processor to catch up.
+            # This assumes that VideoProcessor's output FPS is at least as good
+            # as the input FPS.  If not, adjust this factor accordingly.
+            catch_up_factor = 2
+            # This is the max number of seconds that a live operator has during
+            # a pause before real-time frames disappear forever.
+            operator_pause_allowance = 20
             # We don't know the stream's FPS ahead of time. Let's assume 30.
-            # For now, multiply the assumed FPS by the number of seconds
-            # of live stream that we want to reliably keep. This is effectively
-            # the max length of time that a live operator has available during a pause.
-            # TODO: this could be a PR for imutils. FileVideoStream could take `buffer_time` in constructor, obtain the FPS during init, and calculate its internal `queue_size`.
-            frame_buffer = 20 * 30
-            try:
-                video_path = int(video_path)
-            except ValueError:
-                # Not a USB cam, so just use the given string
-                pass
+            live_fps = 30
+            # The queue size that provides the specified operator pause allowance.
+            frame_buffer = int(catch_up_factor * operator_pause_allowance * live_fps)
+            if self.cam_index is not None:
+                video_path = self.cam_index
+        # TODO: this could be a PR for imutils. `FileVideoStream`` could take `buffer_time` in constructor, obtain the FPS during init, and calculate its internal `queue_size`.
         self.cap = FileVideoStream(video_path, queue_size=frame_buffer).start()
         # Check if we succeeded.
         if self.cap.isOpened():
