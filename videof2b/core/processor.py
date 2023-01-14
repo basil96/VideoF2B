@@ -187,6 +187,12 @@ class VideoProcessor(QObject, StoreProperties):
             int(self.flight.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         )
         self._video_fps = self.flight.cap.get(cv2.CAP_PROP_FPS)
+
+        # HACK
+        if abs(self._video_fps) < 0.0001:
+            self._video_fps = 30.
+        # END OF HACK
+
         self._video_spf = 1. / self._video_fps
         self.num_input_frames = int(self.flight.cap.get(cv2.CAP_PROP_FRAME_COUNT))
         self._video_name = self.flight.video_path.stem
@@ -264,9 +270,13 @@ class VideoProcessor(QObject, StoreProperties):
             live_dir_path = ProcessorSettings.live_videos
             if not live_dir_path.exists():
                 live_dir_path.mkdir(parents=True)
+            # TODO: perform all these name manipulations in the Flight constructor.
             timestr = time.strftime("%Y-%m-%d@%H.%M.%S")
+            live_video_name_stem = f'live_{timestr}_{self.flight.video_path.name}'
+            live_video_name_out = f'{live_video_name_stem}_out.mp4'
+            self.flight.video_path = Path(live_video_name_stem)
             result = FileVideoOutputStream(
-                live_dir_path / f'out_{timestr}.mp4',
+                str(live_dir_path / live_video_name_out),
                 self._fourcc, self._video_fps,
                 (int(self._inp_width), int(self._inp_height))
             ).start()
@@ -419,7 +429,12 @@ class VideoProcessor(QObject, StoreProperties):
         # Report progress at every whole second of video.
         self.frame_time = self.frame_idx * self._video_spf
         if self.frame_time - int(self.frame_time) <= self._video_spf or forced:
-            self.progress = int(self.frame_idx / (self.num_input_frames) * 100)
+            if self.num_input_frames < 1:
+                # During live video, progress does not make sense.
+                # OpenCV reports -1 for num_input_frames in that case anyway.
+                self.progress = 0
+            else:
+                self.progress = int(self.frame_idx / (self.num_input_frames) * 100)
             self.progress_updated.emit((self.frame_time, self.progress, ''))
             self._frame_delta = 0
         self._frame_delta += 1
@@ -706,6 +721,7 @@ class VideoProcessor(QObject, StoreProperties):
         self.is_recording = not self.flight.is_live
         self.ret_code = ProcessorReturnCodes.NORMAL
         # --- Prepare for processing
+        # TODO: perform this name manipulation in the Flight constructor.
         out_video_path = self.flight.video_path.with_name(f'{self._video_name}_out.mp4')
         # Prepare the output video file
         stream_out = self._prep_video_output(out_video_path)

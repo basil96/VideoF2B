@@ -60,11 +60,16 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         '''Lay out the UI elements'''
         self.main_layout = QtWidgets.QVBoxLayout(self)
         self.main_layout.setObjectName('main_layout')
+        self.video_path_lbl = QtWidgets.QLabel('Video source:', self)
+        is_live_video_enabled = self.settings.value('core/enable_live_video')
         self.live_chk = QtWidgets.QCheckBox('&Live video', self)
         self.live_device_list = QtWidgets.QComboBox(self)
-        self.live_chk.setVisible(self.settings.value('core/enable_live_video'))
-        self.live_device_list.setVisible(self.live_chk.isVisible())
-        self.video_path_lbl = QtWidgets.QLabel('Video source:', self)
+        self.live_name_lbl = QtWidgets.QLabel('Stream label:', self)
+        self.live_name_txt = QtWidgets.QLineEdit('LiveStream', self)
+        self.live_chk.setVisible(is_live_video_enabled)
+        self.live_device_list.setVisible(is_live_video_enabled)
+        self.live_name_lbl.setVisible(is_live_video_enabled)
+        self.live_name_txt.setVisible(is_live_video_enabled)
         self.video_path_txt = PathEdit(
             self, PathEditType.FILES,
             'Select video file',
@@ -109,8 +114,10 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         self.bottom_layout.addWidget(self.load_btn)
         self.bottom_layout.addWidget(self.cancel_btn)
         self.main_layout.addWidget(self.live_chk)
-        self.main_layout.addWidget(self.live_device_list)
         self.main_layout.addWidget(self.video_path_lbl)
+        self.main_layout.addWidget(self.live_device_list)
+        self.main_layout.addWidget(self.live_name_lbl)
+        self.main_layout.addWidget(self.live_name_txt)
         self.main_layout.addWidget(self.video_path_txt)
         self.main_layout.addWidget(self.cal_path_lbl)
         self.main_layout.addWidget(self.cal_path_txt)
@@ -130,11 +137,12 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         if is_live:
             box_idx = self.live_device_list.currentIndex()
             cam_idx = self.live_device_list.itemData(box_idx)
-            video_path = Path(str(cam_idx))
+            video_path = Path(self.live_name_txt.text())
         self.flight = Flight(
             video_path,
             cal_path=self.cal_path_txt.path,
             is_live=is_live,
+            cam_index=cam_idx,
             skip_locate=self.skip_locate_chk.isChecked(),
             # TODO: use proper validation for these numeric fields!
             flight_radius=float(self.flight_radius_txt.text()),
@@ -173,9 +181,13 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         result = True
         # TODO: this is rudimentary for now. Using a Qt Model with field validators would be more ideal.
         # Then we could highlight invalid fields instead of popping up a bunch of error messageboxes.
-        if not self.live_chk.isChecked() and \
-                not self._validate_path(self.video_path_txt.path, 'Please specify a valid video source.'):
-            result = False
+        if not self.live_chk.isChecked():
+            if not self._validate_path(self.video_path_txt.path, 'Please specify a valid video source.'):
+                result = False
+        else:
+            if not self.live_name_txt.text().strip():
+                self._show_error_message('Please enter a stream name.')
+                result = False
         # TODO: calibration path can only be validated if we add a "is calibrated" checkbox
         #       to this dialog that enables AR-related data.
         # if not self._validate_path(self.cal_path_txt.path, 'Please specify a valid calibration file.'):
@@ -205,9 +217,9 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         '''Update UI when the state of the "is live" checkbox changes.'''
         is_live = self.live_chk.isChecked()
         self.live_device_list.setVisible(is_live)
-        self.live_device_list.setEnabled(is_live)
-        self.video_path_lbl.setDisabled(is_live)
-        self.video_path_txt.setDisabled(is_live)
+        self.live_name_lbl.setVisible(is_live)
+        self.live_name_txt.setVisible(is_live)
+        self.video_path_txt.setVisible(not is_live)
         if is_live:
             self._populate_live_list()
 
