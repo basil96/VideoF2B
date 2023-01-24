@@ -22,6 +22,8 @@ import logging
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from videof2b.core.common.store import StoreProperties
+
 log = logging.getLogger(__name__)
 
 
@@ -131,3 +133,68 @@ class VideoWindow(QtWidgets.QLabel):
         img_point = self._get_image_point(pos)
         if img_point is not None:
             signal.emit(img_point.toTuple())
+
+
+class LiveVideoWindow(QtWidgets.QWidget, StoreProperties):
+    '''Live video window.
+
+    Create this window when processing live video. Connect `VideoProcessor`'s
+    `new_frame_available` signal to this window's `live_video_window` attribute's
+    `update_frame` method to sync the video display in here with that in the
+    main window.
+    This window can be moved around and resized by the user.
+    Full-screen state can be toggled by pressing `F` on the keyboard.
+    '''
+
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent, QtCore.Qt.CustomizeWindowHint | QtCore.Qt.WindowTitleHint)
+        self.setWindowTitle('Live Video')
+        self.main_layout = QtWidgets.QVBoxLayout()
+        self.live_video_window = VideoWindow(self)
+        self.live_video_window.setMinimumSize(640, 360)
+        self.main_layout.addWidget(self.live_video_window, stretch=1)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.main_layout)
+        action = QtGui.QAction(self)
+        action.setText('Toggle fullscreen live video')
+        action.setShortcut(QtCore.Qt.Key_F)
+        self.act_fullscreen = action
+        self.addAction(self.act_fullscreen)
+        self.load_settings()
+        # pylint: disable=no-member
+        self.act_fullscreen.triggered.connect(self.on_toggle_fullscreen)
+
+    def on_toggle_fullscreen(self):
+        '''Toggle the window's full-screen state.
+        '''
+        if self.isFullScreen():
+            self.set_fullscreen(False)
+        else:
+            self.set_fullscreen(True)
+
+    def set_fullscreen(self, fullscreen: bool):
+        '''Set the window's full-screen state.
+        '''
+        if fullscreen:
+            self.setWindowState(QtCore.Qt.WindowFullScreen)
+        else:
+            self.setWindowState(QtCore.Qt.WindowNoState)
+
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        '''Save this window's state before closing.
+        '''
+        self.save_settings()
+        return super().closeEvent(event)
+
+    def load_settings(self):
+        '''Load the settings of LiveVideoWindow.'''
+        # TODO: This is very naive. Needs better knowledge of available screens so that this window always shows up on an existing screen.
+        self.move(self.settings.value('ui/live_video_window_position'))
+        self.restoreGeometry(self.settings.value('ui/live_video_window_geometry'))
+        self.set_fullscreen(self.settings.value('ui/live_video_window_is_fullscreen'))
+
+    def save_settings(self):
+        '''Save the settings of LiveVideoWindow.'''
+        self.settings.setValue('ui/live_video_window_position', self.pos())
+        self.settings.setValue('ui/live_video_window_geometry', self.saveGeometry())
+        self.settings.setValue('ui/live_video_window_is_fullscreen', self.isFullScreen())
