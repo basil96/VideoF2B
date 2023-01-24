@@ -138,6 +138,8 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         if is_live:
             box_idx = self.live_device_list.currentIndex()
             cam_idx = self.live_device_list.itemData(box_idx)
+            self.settings.setValue('mru/live_device_idx', cam_idx)
+            self.settings.setValue('mru/live_device_name', self.live_device_list.itemText(box_idx))
             video_path = Path(self.live_name_txt.text())
         self.flight = Flight(
             video_path,
@@ -228,8 +230,15 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         '''Populate the list of live devices on demand.'''
         cam = CameraDevice()
         devices = cam.get_camera_info()
+        mru_cam_idx = self.settings.value('mru/live_device_idx')
+        mru_list_idx = None
         self.live_device_list.clear()
-        for device in devices:
+        for i, device in enumerate(devices):
             cam_idx = device['camera_index']
             cam_name = device['camera_name']
             self.live_device_list.addItem(cam_name, userData=cam_idx)
+            if cam_idx == mru_cam_idx:
+                mru_list_idx = i
+        if mru_list_idx is not None:
+            if self.live_device_list.itemText(mru_list_idx) == self.settings.value('mru/live_device_name'):
+                self.live_device_list.setCurrentIndex(mru_list_idx)
