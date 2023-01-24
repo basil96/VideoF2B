@@ -241,32 +241,23 @@ class VideoProcessor(QObject, StoreProperties):
         log.debug(f'full frame size  = {self._full_frame_size}')
         log.debug(f'input ratios w,h = {w_ratio:.4f}, {h_ratio:.4f}')
         result = None
-        if not self.flight.is_live:
-            if self._is_size_restorable:
-                log.info(f'Output size: {self._full_frame_size}')
-                result = FileVideoOutputStream(
-                    str(path_out),
-                    self._fourcc, self._video_fps,
-                    self._full_frame_size
-                ).start()
-                # The resized width if we resize height to full size
-                w_final = int(self._full_frame_size[1] / self._inp_height * self._inp_width)
-                self._resize_kwarg = {'height': self._full_frame_size[1]}
-                self._crop_offset = (int(0.5*(w_final - self._full_frame_size[0])), 0)
-                if w_final < self._full_frame_size[0]:
-                    # The resized height if we resize width to full size
-                    h_final = int(self._full_frame_size[0] / self._inp_width * self._inp_height)
-                    self._resize_kwarg = {'width': self._full_frame_size[0]}
-                    self._crop_offset = (0, int(0.5*(h_final - self._full_frame_size[1])))
-                self._crop_idx = (self._crop_offset[0] + self._full_frame_size[0],
-                                  self._crop_offset[1] + self._full_frame_size[1])
-            else:
-                result = FileVideoOutputStream(
-                    str(path_out),
-                    self._fourcc, self._video_fps,
-                    (int(self._inp_width), int(self._inp_height))
-                ).start()
-        else:
+        output_path = str(path_out)
+        output_size = (int(self._inp_width), int(self._inp_height))
+        if self._is_size_restorable:
+            log.info(f'Output size: {self._full_frame_size}')
+            output_size = self._full_frame_size
+            # The resized width if we resize height to full size
+            w_final = int(self._full_frame_size[1] / self._inp_height * self._inp_width)
+            self._resize_kwarg = {'height': self._full_frame_size[1]}
+            self._crop_offset = (int(0.5*(w_final - self._full_frame_size[0])), 0)
+            if w_final < self._full_frame_size[0]:
+                # The resized height if we resize width to full size
+                h_final = int(self._full_frame_size[0] / self._inp_width * self._inp_height)
+                self._resize_kwarg = {'width': self._full_frame_size[0]}
+                self._crop_offset = (0, int(0.5*(h_final - self._full_frame_size[1])))
+            self._crop_idx = (self._crop_offset[0] + self._full_frame_size[0],
+                              self._crop_offset[1] + self._full_frame_size[1])
+        if self.flight.is_live:
             live_dir_path = ProcessorSettings.live_videos
             if not live_dir_path.exists():
                 live_dir_path.mkdir(parents=True)
@@ -275,11 +266,12 @@ class VideoProcessor(QObject, StoreProperties):
             live_video_name_stem = f'live_{timestr}_{self.flight.video_path.name}'
             live_video_name_out = f'{live_video_name_stem}_out.mp4'
             self.flight.video_path = Path(live_video_name_stem)
-            result = FileVideoOutputStream(
-                str(live_dir_path / live_video_name_out),
-                self._fourcc, self._video_fps,
-                (int(self._inp_width), int(self._inp_height))
-            ).start()
+            output_path = str(live_dir_path / live_video_name_out)
+        result = FileVideoOutputStream(
+            output_path,
+            self._fourcc, self._video_fps,
+            output_size
+        ).start()
         return result
 
     def _prep_fig_tracking(self):
@@ -410,8 +402,7 @@ class VideoProcessor(QObject, StoreProperties):
         if ProcessorSettings.perform_3d_tracking and self.flight.is_located:
             self._track_in_3d()
         # Restore the frame to original full size, if appropriate.
-        # TODO: maybe `is_live` is not a necessary condition here..? Live video needs testing.
-        if not self.flight.is_live and self._is_size_restorable:
+        if self._is_size_restorable:
             # Size us back up to original. preserve aspect, crop to middle
             frame = resize(frame, **self._resize_kwarg)[
                 self._crop_offset[1]:self._crop_idx[1],
