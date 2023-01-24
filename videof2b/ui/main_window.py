@@ -23,6 +23,7 @@ import logging
 from datetime import datetime, timedelta
 
 from PySide6 import QtCore, QtGui, QtWidgets
+
 from videof2b.core.calibration import CalibratorReturnCodes, CameraCalibrator
 from videof2b.core.common import FigureTypes, SphereManipulations
 from videof2b.core.common.store import StoreProperties
@@ -32,7 +33,7 @@ from videof2b.ui.camera_cal_dialog import CameraCalibrationDialog
 from videof2b.ui.camera_director_dialog import CamDirectorDialog
 from videof2b.ui.icons import MyIcons
 from videof2b.ui.load_flight_dialog import LoadFlightDialog
-from videof2b.ui.video_window import VideoWindow
+from videof2b.ui.video_window import LiveVideoWindow, VideoWindow
 from videof2b.ui.widgets import QHLine
 
 log = logging.getLogger(__name__)
@@ -353,6 +354,8 @@ class MainWindow(QtWidgets.QMainWindow, UIMainWindow, StoreProperties):
         log.debug('Creating MainWindow')
         # Set up the interface
         self.setup_ui(self)
+        self.live_widget = None
+        self.live_video_window = None
         self._is_window_closing = False
         # Set up internal objects
         self._proc = None
@@ -411,6 +414,8 @@ class MainWindow(QtWidgets.QMainWindow, UIMainWindow, StoreProperties):
             event.ignore()
         else:
             log.debug('Video processing thread is not running. MainWindow is closing...')
+            if self.live_widget is not None:
+                self.live_widget.close()
             event.accept()
         if event.isAccepted():
             self.save_settings()
@@ -598,14 +603,24 @@ class MainWindow(QtWidgets.QMainWindow, UIMainWindow, StoreProperties):
         self.act_figure_end.triggered.disconnect(self.on_figure_end)
         self._proc = None
 
+    def _init_live_window(self):
+        log.debug('Creating live video window')
+        self.live_widget = LiveVideoWindow()
+        self.live_video_window = self.live_widget.live_video_window
+        self._proc.new_frame_available.connect(
+            self.live_video_window.update_frame, QtCore.Qt.QueuedConnection)
+        self.live_widget.show()
+
     def on_load_flight(self):
         '''Loads a flight via LoadFlightDialog and starts processing it.'''
         # TODO: is there a scenario when we would NOT want to start processing a Flight immediately?
         diag = LoadFlightDialog(self)
         if diag.exec() == QtWidgets.QDialog.Accepted:
             self._init_proc()
-            # At this point, the flight data is validated. Load it into the processor.
+            if diag.flight.is_live:
+                self._init_live_window()
             self._last_flight = diag.flight
+            # At this point, the flight data is validated. Load it into the processor.
             self._load_flight(diag.flight)
 
     def _load_flight(self, flight):
@@ -688,6 +703,9 @@ class MainWindow(QtWidgets.QMainWindow, UIMainWindow, StoreProperties):
         self._reset_figure_controls()
         self._enable_figure_controls(False)
         self.video_window.clear()
+        if self.live_video_window is not None:
+            self.live_video_window.clear()
+            self.live_widget.save_settings()
         self.video_time_lbl.setText('00:00')
         self.video_time_lbl.hide()
         self.proc_progress_bar.hide()

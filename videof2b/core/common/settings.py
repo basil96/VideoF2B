@@ -38,6 +38,9 @@ class Settings(QSettings):
         'ui/main_window_position': QPoint(0, 0),
         'ui/main_window_geometry': QByteArray(),
         'ui/main_window_state': QByteArray(),
+        'ui/live_video_window_position': QPoint(0, 0),
+        'ui/live_video_window_geometry': QByteArray(),
+        'ui/live_video_window_is_fullscreen': False,
     }
 
     def __init__(self, *args, **kwargs):
