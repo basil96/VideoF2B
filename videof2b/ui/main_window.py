@@ -650,6 +650,10 @@ class MainWindow(QtWidgets.QMainWindow, UIMainWindow, StoreProperties):
         self._reset_figure_controls()
         self.act_pause_resume.setIcon(MyIcons().pause)
         self.act_pause_resume.setEnabled(True)
+        if self._last_flight.is_live:
+            self.instruct_lbl.show()
+            self.instruct_lbl.setStyleSheet('QLabel { color : red; }')
+            self.instruct_lbl.setText('Press R to start recording.')
 
     def on_restart_flight(self):
         '''Reload the current flight and restart it.'''
@@ -669,7 +673,10 @@ class MainWindow(QtWidgets.QMainWindow, UIMainWindow, StoreProperties):
         self._load_flight(self._last_flight)
 
     def on_start_recording(self):
+        '''Tell the processor to start recording live video.'''
         self.start_live_recording.emit()
+        self.instruct_lbl.setStyleSheet('QLabel { color : green; }')
+        self.instruct_lbl.setText('Live recording in progress.')
 
     def on_proc_starting(self):
         '''Handle required preparations when the processing thread starts.'''

@@ -134,6 +134,7 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
             return None  # Keeps the window up
         is_live = self.live_chk.isChecked()
         video_path = self.video_path_txt.path
+        cam_idx = None
         if is_live:
             box_idx = self.live_device_list.currentIndex()
             cam_idx = self.live_device_list.itemData(box_idx)
