@@ -35,6 +35,8 @@ class Settings(QSettings):
         'mru/video_dir': Path('..'),
         'mru/cal_dir': Path('..'),
         'mru/crashreport_dir': Path('..'),
+        'mru/live_device_idx': 0,
+        'mru/live_device_name': '',
         'ui/main_window_position': QPoint(0, 0),
         'ui/main_window_geometry': QByteArray(),
         'ui/main_window_state': QByteArray(),
