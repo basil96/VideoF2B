@@ -617,7 +617,7 @@ class MainWindow(QtWidgets.QMainWindow, UIMainWindow, StoreProperties):
         diag = LoadFlightDialog(self)
         if diag.exec() == QtWidgets.QDialog.Accepted:
             self._init_proc()
-            if diag.flight.is_live:
+            if diag.flight.is_live and diag.show_live_video_window:
                 self._init_live_window()
             self._last_flight = diag.flight
             # At this point, the flight data is validated. Load it into the processor.

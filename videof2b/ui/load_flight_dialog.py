@@ -35,6 +35,18 @@ from videof2b.ui.widgets import PathEdit, PathEditType
 class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
     '''The dialog window that collects user inputs for a Flight instance.'''
 
+    # All the video frame rates that exist today
+    _video_input_rates = (
+        23.98,
+        24.,
+        25.,
+        29.97,
+        30.,
+        50.,
+        59.94,
+        60.,
+    )
+
     def __init__(self, parent) -> None:
         '''Constructor.'''
         super().__init__(
@@ -47,11 +59,15 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         #       for proper cohesion.
         # see https://doc.qt.io/qtforpython/overviews/model-view-programming.html#models
         self.flight = None
+        self.is_live_decimator_enabled = self.settings.value('core/enable_live_decimator')
+        self.show_live_video_window = self.settings.value('ui/show_live_video_window')
         self.setup_ui()
         self.setWindowTitle('Load a Flight')
         # pylint: disable=no-member
         self.on_live_state_changed()
         self.live_chk.stateChanged.connect(self.on_live_state_changed)
+        self.live_decimate_chk.stateChanged.connect(self.on_live_decimate_state_changed)
+        self.live_show_vidwin_chk.stateChanged.connect(self.on_live_show_vidwin_state_changed)
         self.skip_locate_chk.stateChanged.connect(self.on_skip_locate_changed)
         self.cancel_btn.clicked.connect(self.reject)
         self.load_btn.clicked.connect(self.accept)
@@ -61,15 +77,23 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         self.main_layout = QtWidgets.QVBoxLayout(self)
         self.main_layout.setObjectName('main_layout')
         self.video_path_lbl = QtWidgets.QLabel('Video source:', self)
+
         is_live_video_enabled = self.settings.value('core/enable_live_video')
         self.live_chk = QtWidgets.QCheckBox('&Live video', self)
         self.live_device_list = QtWidgets.QComboBox(self)
+        self.live_rates_lbl = QtWidgets.QLabel('Input frame rate:', self)
+        self.live_rates_list = QtWidgets.QComboBox(self)
+        self.live_rates_list.addItems([str(x) for x in self._video_input_rates])
+        self.live_rates_list.setCurrentIndex(self.settings.value('mru/live_video_input_fps_idx'))
+        self.live_rates_list.setToolTip('Match this value to your live video\'s input frame rate.')
+        self.live_decimate_chk = QtWidgets.QCheckBox('Decimate input by 1/2', self)
+        self.live_decimate_chk.setChecked(self.is_live_decimator_enabled)
+        self.live_show_vidwin_chk = QtWidgets.QCheckBox('Show live video window', self)
+        self.live_show_vidwin_chk.setChecked(self.show_live_video_window)
         self.live_name_lbl = QtWidgets.QLabel('Stream label:', self)
         self.live_name_txt = QtWidgets.QLineEdit('LiveStream', self)
         self.live_chk.setVisible(is_live_video_enabled)
-        self.live_device_list.setVisible(is_live_video_enabled)
-        self.live_name_lbl.setVisible(is_live_video_enabled)
-        self.live_name_txt.setVisible(is_live_video_enabled)
+
         self.video_path_txt = PathEdit(
             self, PathEditType.FILES,
             'Select video file',
@@ -116,6 +140,10 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         self.main_layout.addWidget(self.live_chk)
         self.main_layout.addWidget(self.video_path_lbl)
         self.main_layout.addWidget(self.live_device_list)
+        self.main_layout.addWidget(self.live_rates_lbl)
+        self.main_layout.addWidget(self.live_rates_list)
+        self.main_layout.addWidget(self.live_decimate_chk)
+        self.main_layout.addWidget(self.live_show_vidwin_chk)
         self.main_layout.addWidget(self.live_name_lbl)
         self.main_layout.addWidget(self.live_name_txt)
         self.main_layout.addWidget(self.video_path_txt)
@@ -135,17 +163,24 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         is_live = self.live_chk.isChecked()
         video_path = self.video_path_txt.path
         cam_idx = None
+        live_fps_value = None
         if is_live:
             box_idx = self.live_device_list.currentIndex()
             cam_idx = self.live_device_list.itemData(box_idx)
             self.settings.setValue('mru/live_device_idx', cam_idx)
             self.settings.setValue('mru/live_device_name', self.live_device_list.itemText(box_idx))
+            self.settings.setValue('mru/live_video_input_fps_idx', self.live_rates_list.currentIndex())
             video_path = Path(self.live_name_txt.text())
+            live_fps_value = self._video_input_rates[self.live_rates_list.currentIndex()]
+            self.settings.setValue('core/enable_live_decimator', self.is_live_decimator_enabled)
+            self.settings.setValue('ui/show_live_video_window', self.show_live_video_window)
         self.flight = Flight(
             video_path,
-            cal_path=self.cal_path_txt.path,
             is_live=is_live,
+            cal_path=self.cal_path_txt.path,
             cam_index=cam_idx,
+            live_fps=live_fps_value,
+            enable_decimator=self.is_live_decimator_enabled,
             skip_locate=self.skip_locate_chk.isChecked(),
             # TODO: use proper validation for these numeric fields!
             flight_radius=float(self.flight_radius_txt.text()),
@@ -220,11 +255,23 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         '''Update UI when the state of the "is live" checkbox changes.'''
         is_live = self.live_chk.isChecked()
         self.live_device_list.setVisible(is_live)
+        self.live_rates_lbl.setVisible(is_live)
+        self.live_rates_list.setVisible(is_live)
+        self.live_decimate_chk.setVisible(is_live)
+        self.live_show_vidwin_chk.setVisible(is_live)
         self.live_name_lbl.setVisible(is_live)
         self.live_name_txt.setVisible(is_live)
         self.video_path_txt.setVisible(not is_live)
         if is_live:
             self._populate_live_list()
+
+    def on_live_decimate_state_changed(self):
+        '''Update the decimator setting.'''
+        self.is_live_decimator_enabled = self.sender().isChecked()
+
+    def on_live_show_vidwin_state_changed(self):
+        '''Update the live video window visibility setting.'''
+        self.show_live_video_window = self.sender().isChecked()
 
     def _populate_live_list(self):
         '''Populate the list of live devices on demand.'''
