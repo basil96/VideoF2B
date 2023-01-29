@@ -152,6 +152,8 @@ class VideoProcessor(QObject, StoreProperties):
         self._video_fps: float = None
         # Time per video frame (seconds per frame). Inverse of FPS. Used to avoid repetitive division.
         self._video_spf: float = None
+        # If True, take every other frame during live video. Specified by user.
+        self._decimate_frames: bool = False
         self.num_input_frames: int = -1
         self._is_size_restorable: bool = False
         self._detector: Detector = None
@@ -188,10 +190,11 @@ class VideoProcessor(QObject, StoreProperties):
         )
         self._video_fps = self.flight.cap.get(cv2.CAP_PROP_FPS)
 
-        # HACK
-        if abs(self._video_fps) < 0.0001:
-            self._video_fps = 30.
-        # END OF HACK
+        if self.flight.is_live:
+            self._video_fps = self.flight.live_fps
+            self._decimate_frames = self.flight.is_live_decimator_enabled
+            if self._decimate_frames:
+                self._video_fps *= 0.5
 
         self._video_spf = 1. / self._video_fps
         self.num_input_frames = int(self.flight.cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -665,7 +668,8 @@ class VideoProcessor(QObject, StoreProperties):
             self._inp_width = self.flight.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
             self._inp_height = self.flight.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
         self._det_scale = float(self._inp_width) / float(ProcessorSettings.im_width)
-        log.info(f'Input FPS : {self.flight.cap.get(cv2.CAP_PROP_FPS)}')
+        log.info(f' Input FPS: {self.flight.cap.get(cv2.CAP_PROP_FPS)}')
+        log.info(f'Output FPS: {self._video_fps}')
         log.info(f'Input size: {self._inp_width} x {self._inp_height} px')
         log.info(f' Full size: {self._full_frame_size}')
 
@@ -726,6 +730,8 @@ class VideoProcessor(QObject, StoreProperties):
         was_updated_flag = False
         # Speed meter
         self._fps = FPS().start()
+        # Helper flag for decimating every other frame during live video, if requested.
+        drop_frame = True
 
         # ============================ PROCESSING LOOP ======================================================
         log.debug('Processing loop begins.')
@@ -750,6 +756,10 @@ class VideoProcessor(QObject, StoreProperties):
                 QCoreApplication.processEvents()
                 continue
             num_consecutive_empty_frames = 0
+
+            drop_frame = not drop_frame
+            if self._decimate_frames and drop_frame:
+                continue
 
             if self.flight.is_calibrated:
                 # log.debug(f'frame.shape before undistort: {self._frame.shape}')

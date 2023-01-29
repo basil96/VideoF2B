@@ -51,6 +51,10 @@ class Flight(QObject):
 
             `kwargs` are additional parameters when cal_path is specified.
             These are as follows:
+            `cam_index`: index of a live camera. Required when `is_live` is True.
+            `live_fps`: frame rate of live input video.
+            `enable_decimator`: decimate input rate by 1/2. Applicable when
+                                   `is_live` is True. Defaults to False.
             `skip_locate`: indicates whether to skip the camera locating procedure
                            in a calibrated Flight. Defaults to False.
             `flight_radius`: radius of the flight hemisphere.
@@ -78,8 +82,12 @@ class Flight(QObject):
             try:
                 cam_index = int(cam_index)
             except ValueError:
-                pass
+                raise ValueError('A valid camera index is required for live video.')
         self.cam_index = cam_index
+        self.live_fps = kwargs.pop('live_fps', None)
+        if self.live_fps is None:
+            raise ValueError('No frame rate selected for live video.')
+        self.is_live_decimator_enabled = kwargs.pop('enable_decimator', False)
         self.skip_locate = kwargs.pop('skip_locate', False)
         self.flight_radius = kwargs.pop('flight_radius', common.DEFAULT_FLIGHT_RADIUS)
         self.marker_radius = kwargs.pop('marker_radius', common.DEFAULT_MARKER_RADIUS)
@@ -119,12 +127,13 @@ class Flight(QObject):
         # Queue size for FileVideoStream. Default starts at 128.
         frame_buffer = 128
         if self.is_live:
+            log.info('Using live video.')
             # The number of seconds of live stream that we want to reliably keep
             # is multiplied by this factor so that the operator has the allotted
             # allowance plus at least as much time for the processor to catch up.
-            # This assumes that VideoProcessor's output FPS is at least as good
-            # as the input FPS.  If not, adjust this factor accordingly.
-            catch_up_factor = 2
+            # A value of 2.0 assumes that VideoProcessor's output FPS is at least
+            # as good as the input FPS.  If not, adjust this factor accordingly.
+            catch_up_factor = 2.4
             # This is the max number of seconds that a live operator has during
             # a pause before real-time frames disappear forever.
             operator_pause_allowance = 20
