@@ -710,8 +710,8 @@ class MainWindow(QtWidgets.QMainWindow, UIMainWindow, StoreProperties):
         self._reset_figure_controls()
         self._enable_figure_controls(False)
         self.video_window.clear()
-        if self.live_video_window is not None:
-            self.live_video_window.clear()
+        if self.live_widget is not None:
+            self.live_widget.clear()
             self.live_widget.save_settings()
         self.video_time_lbl.setText('00:00')
         self.video_time_lbl.hide()
