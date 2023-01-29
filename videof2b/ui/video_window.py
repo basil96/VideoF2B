@@ -19,9 +19,11 @@
 The video window of VideoF2B application.
 '''
 import logging
+from pathlib import Path
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from videof2b.core.common import get_bundle_dir
 from videof2b.core.common.store import StoreProperties
 
 log = logging.getLogger(__name__)
@@ -185,6 +187,19 @@ class LiveVideoWindow(QtWidgets.QWidget, StoreProperties):
         '''
         self.save_settings()
         return super().closeEvent(event)
+
+    def clear(self):
+        '''Clear the live video window.
+
+        Change the display to an image from disk if it exists.
+        The searched image path is `../VideoF2B_live_videos/live_background.png`
+        '''
+        self.live_video_window.clear()
+        bundle_path = get_bundle_dir()
+        bg_img_path = bundle_path / '..' / 'VideoF2B_live_videos' / 'live_background.png'
+        if bg_img_path.exists():
+            img = QtGui.QImage(bg_img_path)
+            self.live_video_window.update_frame(img)
 
     def load_settings(self):
         '''Load the settings of LiveVideoWindow.'''
