@@ -24,7 +24,6 @@ import sys
 from traceback import format_exception
 
 from PySide6 import QtCore, QtWidgets
-from winrt import _winrt
 
 from videof2b.core.common import PD, get_app_metadata
 from videof2b.core.common.settings import Settings
@@ -32,6 +31,13 @@ from videof2b.core.common.store import Store
 from videof2b.ui.exception_dialog import ExceptionDialog
 from videof2b.ui.icons import MyIcons
 from videof2b.ui.main_window import MainWindow
+
+HAS_WINRT = True
+try:
+    from winrt import _winrt
+except ImportError:
+    HAS_WINRT = False
+
 
 __all__ = ['VideoF2B', 'start']
 
@@ -154,7 +160,8 @@ def start():
     log.debug('Initializing application')
     # Workaround for the STA/MTA conflict between winrt and Qt. This must be done prior to starting the GUI.
     # See https://github.com/microsoft/xlang/issues/690#issuecomment-867950440
-    _winrt.uninit_apartment()
+    if HAS_WINRT:
+        _winrt.uninit_apartment()
     # Start the Application object
     qt_app = QtWidgets.QApplication()
     qt_app.setOrganizationName(my_name)
