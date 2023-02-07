@@ -128,21 +128,22 @@ class Flight(QObject):
         frame_buffer = 128
         if self.is_live:
             log.info('Using live video.')
-            # The number of seconds of live stream that we want to reliably keep
-            # is multiplied by this factor so that the operator has the allotted
-            # allowance plus at least as much time for the processor to catch up.
-            # A value of 2.0 assumes that VideoProcessor's output FPS is at least
-            # as good as the input FPS.  If not, adjust this factor accordingly.
-            catch_up_factor = 2.4
-            # This is the max number of seconds that a live operator has during
-            # a pause before real-time frames disappear forever.
-            operator_pause_allowance = 20
             # We don't know the stream's FPS ahead of time. Let's assume 30.
-            live_fps = 30
-            # The queue size that provides the specified operator pause allowance.
-            frame_buffer = int(catch_up_factor * operator_pause_allowance * live_fps)
+            fps_in = 30.
+            # The computing system's actual live FPS rate
+            # (find experimentally)
+            fps_out = 25.
+            # The length of the desired real-time session, in seconds.
+            # Include allowance for operator pause time.
+            session_time = 360 + 20
+            # The minimum buffer size that will result in a session
+            # without dropped frames. Only needed if output FPS lags
+            # behind live video.
+            if fps_out < fps_in:
+                frame_buffer = int(session_time * (fps_in - fps_out))
             if self.cam_index is not None:
                 video_path = self.cam_index
+        log.info(f'frame buffer = {frame_buffer}')
         # TODO: this could be a PR for imutils. `FileVideoStream`` could take `buffer_time` in constructor, obtain the FPS during init, and calculate its internal `queue_size`.
         self.cap = FileVideoStream(video_path, queue_size=frame_buffer).start()
         # Check if we succeeded.
