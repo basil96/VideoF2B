@@ -26,8 +26,8 @@ import subprocess
 
 # import cv2
 
-# if platform.system() == 'Windows':
-#     import winrt.windows.devices.enumeration as windows_devices
+if platform.system() == 'Windows':
+    import winrt.windows.devices.enumeration as windows_devices
 
 VIDEO_DEVICES = 4
 
@@ -89,5 +89,4 @@ class CameraDevice:
         return cameras
 
     async def get_camera_information_for_windows(self):
-        import winrt.windows.devices.enumeration as windows_devices
         return await windows_devices.DeviceInformation.find_all_async(VIDEO_DEVICES)
