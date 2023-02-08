@@ -134,6 +134,8 @@ class VideoProcessor(QObject, StoreProperties):
         self.cam: CalCamera = None
         self._full_frame_size: Tuple[int, int] = None
         self._fourcc: cv2.VideoWriter_fourcc = None
+        self._stream_out: cv2.VideoWriter = None
+        self._output_size = None
         self._fps: FPS = None
         self._det_scale: float = None
         self._inp_width: int = None
@@ -236,19 +238,19 @@ class VideoProcessor(QObject, StoreProperties):
         # Emit initial progress
         self.progress_updated.emit((self.frame_time, self.progress, ''))
 
-    def _prep_video_output(self, path_out):
+    def _prep_video_output(self, path_out: Path) -> None:
         '''Prepare the output video file.'''
         w_ratio = self._inp_width / self._full_frame_size[0]
         h_ratio = self._inp_height / self._full_frame_size[1]
         self._is_size_restorable = w_ratio > 0.95 and h_ratio > 0.95
         log.debug(f'full frame size  = {self._full_frame_size}')
         log.debug(f'input ratios w,h = {w_ratio:.4f}, {h_ratio:.4f}')
-        result = None
-        output_path = str(path_out)
-        output_size = (int(self._inp_width), int(self._inp_height))
+        self._stream_out = None
+        self.flight.output_path = path_out
+        self._output_size = (int(self._inp_width), int(self._inp_height))
         if self._is_size_restorable:
             log.info(f'Output size: {self._full_frame_size}')
-            output_size = self._full_frame_size
+            self._output_size = self._full_frame_size
             # The resized width if we resize height to full size
             w_final = int(self._full_frame_size[1] / self._inp_height * self._inp_width)
             self._resize_kwarg = {'height': self._full_frame_size[1]}
@@ -264,18 +266,11 @@ class VideoProcessor(QObject, StoreProperties):
             live_dir_path = ProcessorSettings.live_videos
             if not live_dir_path.exists():
                 live_dir_path.mkdir(parents=True)
-            # TODO: perform all these name manipulations in the Flight constructor.
-            timestr = time.strftime("%Y-%m-%d@%H.%M.%S")
-            live_video_name_stem = f'live_{timestr}_{self.flight.video_path.name}'
-            live_video_name_out = f'{live_video_name_stem}_out.mp4'
-            self.flight.video_path = Path(live_video_name_stem)
-            output_path = str(live_dir_path / live_video_name_out)
-        result = FileVideoOutputStream(
-            output_path,
+            return
+        self._stream_out = FileVideoOutputStream(
+            str(self.flight.output_path),
             self._fourcc, self._video_fps,
-            output_size
-        ).start()
-        return result
+            self._output_size).start()
 
     def _prep_fig_tracking(self):
         '''Prepare processor for figure tracking, if enabled.'''
@@ -675,6 +670,17 @@ class VideoProcessor(QObject, StoreProperties):
 
     def start_live_recording(self):
         '''Start recording the live input stream.'''
+        # Create output writer here, using the timestamp at this moment.
+        # TODO: perform all these name manipulations in the Flight constructor.
+        timestr = time.strftime("%Y-%m-%d@%H.%M.%S")
+        live_video_name_stem = f'live_{timestr}_{self.flight.video_path.name}'
+        live_video_name_out = f'{live_video_name_stem}_out.mp4'
+        self.flight.video_path = Path(live_video_name_stem)
+        self.flight.output_path = ProcessorSettings.live_videos / live_video_name_out
+        self._stream_out = cv2.VideoWriter(
+            str(self.flight.output_path),
+            self._fourcc, self._video_fps,
+            self._output_size)
         log.info('Start recording live video.')
         self.is_recording = True
 
@@ -719,7 +725,7 @@ class VideoProcessor(QObject, StoreProperties):
         # TODO: perform this name manipulation in the Flight constructor.
         out_video_path = self.flight.video_path.with_name(f'{self._video_name}_out.mp4')
         # Prepare the output video file
-        stream_out = self._prep_video_output(out_video_path)
+        self._prep_video_output(out_video_path)
         # Number of total empty frames in the input.
         num_empty_frames = 0
         # Number of consecutive empty frames at beginning of capture
@@ -833,7 +839,7 @@ class VideoProcessor(QObject, StoreProperties):
             was_updated_flag = False
 
             # Save the processed frame.
-            stream_out.write(self._frame)
+            self._stream_out.write(self._frame)
             self._fps.update()
 
             # Report the processing progress to user
@@ -868,7 +874,7 @@ class VideoProcessor(QObject, StoreProperties):
         if self.ret_code == ProcessorReturnCodes.NORMAL:
             proc_extent = 'full'
         log.info(f'Finished {proc_extent} processing of {self.flight.video_path.name}')
-        log.info(f'Result video written to {out_video_path.name}')
+        log.info(f'Result video written to {self.flight.output_path.name}')
         log.info(final_progress_str)
         log.info(elapsed_time_str)
         log.info(mean_fps_str)
@@ -879,8 +885,8 @@ class VideoProcessor(QObject, StoreProperties):
             self._fig_tracker = None
 
         # Clean up
-        if stream_out is not None:
-            stream_out.stop()
+        if self._stream_out is not None:
+            self._stream_out.stop()
         if self.flight.is_located and ProcessorSettings.perform_3d_tracking:
             self._data_writer.close()
 
