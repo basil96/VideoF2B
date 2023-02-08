@@ -71,6 +71,7 @@ class Flight(QObject):
         # Indicates whether the underlying video stream is ready to roll.
         self.is_ready = False
         self.video_path = vid_path
+        self.output_path: Path = None
         self.is_live = is_live
         self.cap = None
         self.calibration_path = cal_path
