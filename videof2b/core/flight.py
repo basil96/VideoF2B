@@ -82,11 +82,11 @@ class Flight(QObject):
         if self.is_live:
             try:
                 cam_index = int(cam_index)
-            except ValueError:
-                raise ValueError('A valid camera index is required for live video.')
+            except ValueError as exc:
+                raise exc from ValueError('A valid camera index is required for live video.')
         self.cam_index = cam_index
         self.live_fps = kwargs.pop('live_fps', None)
-        if self.live_fps is None:
+        if self.is_live and self.live_fps is None:
             raise ValueError('No frame rate selected for live video.')
         self.is_live_decimator_enabled = kwargs.pop('enable_decimator', False)
         self.skip_locate = kwargs.pop('skip_locate', False)
@@ -129,8 +129,8 @@ class Flight(QObject):
         frame_buffer = 128
         if self.is_live:
             log.info('Using live video.')
-            # We don't know the stream's FPS ahead of time. Let's assume 30.
-            fps_in = 30.
+            # Use the provided input FPS.
+            fps_in = self.live_fps
             # The computing system's actual live FPS rate
             # (find experimentally)
             fps_out = 25.
