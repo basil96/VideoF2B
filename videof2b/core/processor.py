@@ -682,6 +682,9 @@ class VideoProcessor(QObject, StoreProperties):
             self._fourcc, self._video_fps,
             self._output_size)
         log.info('Start recording live video.')
+        # The request to start live recording may be delayed for a long time.
+        # Restart FPS meter to be fair.
+        self._fps.start()
         self.is_recording = True
 
     def stop(self):
