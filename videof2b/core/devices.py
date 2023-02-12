@@ -21,15 +21,20 @@ Adapted from https://stackoverflow.com/a/68402011
 '''
 
 import asyncio
-import platform
+import logging
+import re
 import subprocess
 
-# import cv2
+from videof2b.core.common import is_linux, is_win
 
-if platform.system() == 'Windows':
+log = logging.getLogger(__name__)
+
+
+if is_win():
     import winrt.windows.devices.enumeration as windows_devices
 
 VIDEO_DEVICES = 4
+PAT_VIDEO_SRC = re.compile(r'video(\d+)')
 
 
 class CameraDevice:
@@ -39,52 +44,40 @@ class CameraDevice:
 
     def get_camera_info(self) -> list:
         self.cameras = []
-
-        # camera_indexes = self.get_camera_indexes()
-
-        # if len(camera_indexes) == 0:
-        # return self.cameras
-
-        # self.cameras = self.add_camera_information(camera_indexes)
         self.cameras = self.add_camera_information()
-
         return self.cameras
 
-    # TODO: confirmed on Win10 that it's not necessary to actually attempt starting a camera to find it. Confirm the same on Linux and hopefully Win7.
-    # def get_camera_indexes(self):
-    #     index = 0
-    #     camera_indexes = []
-    #     max_numbers_of_cameras_to_check = 10
-    #     while max_numbers_of_cameras_to_check > 0:
-    #         capture = cv2.VideoCapture(index)
-    #         if capture.read()[0]:
-    #             camera_indexes.append(index)
-    #             capture.release()
-    #         index += 1
-    #         max_numbers_of_cameras_to_check -= 1
-    #     return camera_indexes
-
-    # def add_camera_information(self, camera_indexes: list) -> list:
     def add_camera_information(self) -> list:
-        platform_name = platform.system()
         cameras = []
 
-        if platform_name == 'Windows':
+        if is_win():
             cameras_info_windows = asyncio.run(self.get_camera_information_for_windows())
             for camera_index, device in enumerate(cameras_info_windows):
                 camera_name = device.name.replace('\n', '')
                 cameras.append({'camera_index': camera_index, 'camera_name': camera_name})
 
-        elif platform_name == 'Linux':
-            # TODO: why not just dynamically discover the list of available "video\d+" devices, and enumerate them?
-            # for camera_index in camera_indexes:
-            for camera_index in range(10):
+        elif is_linux():
+            # Dynamically discover the list of available "video\d+" devices and enumerate them.
+            vstr = subprocess.run(
+                ['ls', '/sys/class/video4linux'],
+                stdout=subprocess.PIPE
+            ).stdout.decode('utf8')
+            log.debug(f'{vstr = }')
+            video_sources = []
+            if vstr:
+                video_sources = [s for s in vstr.split('\n') if s]
+                video_ids = [int(PAT_VIDEO_SRC.search(s).group(1)) for s in video_sources]
+                video_sources = zip(video_ids, video_sources)
+            log.debug(f'{video_sources = }')
+
+            for camera_index, video_source in video_sources:
                 camera_name = subprocess.run(
-                    ['cat', f'/sys/class/video4linux/video{camera_index}/name'],
+                    ['cat', f'/sys/class/video4linux/{video_source}/name'],
                     stdout=subprocess.PIPE
                 ).stdout.decode('utf-8')
                 camera_name = camera_name.replace('\n', '')
-                cameras.append({'camera_index': camera_index, 'camera_name': camera_name})
+                if camera_name:
+                    cameras.append({'camera_index': camera_index, 'camera_name': camera_name})
 
         return cameras
 
