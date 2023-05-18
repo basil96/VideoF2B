@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # VideoF2B - Draw F2B figures from video
-# Copyright (C) 2021 - 2022  Andrey Vasilik - basil96
+# Copyright (C) 2021 - 2023  Andrey Vasilik - basil96
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@ from pathlib import Path
 
 from imutils.video import FileVideoStream
 from PySide6.QtCore import QObject, Signal
+
 from videof2b.core import common
 
 log = logging.getLogger(__name__)

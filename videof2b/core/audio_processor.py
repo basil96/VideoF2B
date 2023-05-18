@@ -20,9 +20,9 @@ The audio processor in VideoF2B.  Used during capture of live video.
 '''
 
 import logging
-from pathlib import Path
 import sys
 import wave
+from pathlib import Path
 
 import pyaudio
 from PySide6.QtCore import QCoreApplication, QObject, Signal
@@ -31,36 +31,92 @@ log = logging.getLogger(__name__)
 
 
 class AudioProcessor(QObject):
-    def __init__(self, audio_path: Path, input_device_index=None) -> None:
+    '''Thread-safe object for recording audio.'''
+    finished = Signal()
+
+    def __init__(self, audio_path: Path = None, input_device_index: int = 0) -> None:
         super().__init__()
+        self.exc: Exception = None
         self.audio_path = audio_path
-        self._input_device_index = input_device_index
+        self.audio_file = None
+        self.input_device_index = input_device_index
         self._keep_processing: bool = False
+        self._start_recording: bool = False
         self._chunk = 1024
         self._format = pyaudio.paInt16
         self._channels = 1 if sys.platform == 'darwin' else 2
         self._rate = 44100
-        self._recording_time = 5
+
+    def on_new_name(self, new_name: Path):
+        '''New name for the recorded file is available.'''
+        log.debug(f'New recording name available: {new_name}')
+        self.audio_path = new_name.with_suffix('.wav')
+        log.debug(f'New audio file path is: {self.audio_path}')
+
+    def run(self):
+        '''Prepare audio stream for recording.'''
+        try:
+            self._process()
+        except Exception as exc:
+            log.critical('An unhandled exception occurred while running AudioProcessor._process()!')
+            log.critical('Exception details follow:')
+            log.critical(exc)
+            self.exc = exc
 
     def start(self):
-        self._keep_processing = True
+        '''Start recording audio stream.'''
         log.info('Starting audio recording.')
-        with wave.open(self.audio_path, 'wb') as audio_file:
+        self._start_recording = True
+
+    def stop(self):
+        '''Stop recording audio stream.'''
+        log.info('Stopping audio recording.')
+        self._keep_processing = False
+
+    def _process(self):
+        self._keep_processing = True
+        log.info('Initializing audio processor.')
+        is_recorded = False
+        while self.audio_path is None:
+            # Wait for audio filename to be set
+            QCoreApplication.processEvents()
+        with wave.open(str(self.audio_path), 'wb') as self.audio_file:
             audio = pyaudio.PyAudio()
-            audio_file.setnchannels(self._channels)
-            audio_file.setsampwidth(audio.get_sample_size(self._format))
-            audio_file.setframerate(self._rate)
+            self.audio_file.setnchannels(self._channels)
+            self.audio_file.setsampwidth(audio.get_sample_size(self._format))
+            self.audio_file.setframerate(self._rate)
             stream = audio.open(format=self._format,
                                 channels=self._channels,
                                 rate=self._rate,
                                 input=True,
-                                input_device_index=self._input_device_index)
-            log.info('Recording audio')
-            for _ in range(0, self._rate // self._chunk * self._recording_time):
-                audio_file.writeframes(stream.read(self._chunk))
-            log.info('Finished recording audio.')
-            stream.close()
-            audio.terminate()
+                                input_device_index=self.input_device_index,
+                                start=False,
+                                stream_callback=self._callback)
+            log.info('Audio processor initialized. Waiting for start signal.')
+            while not self._start_recording and self._keep_processing:
+                # Breathe, dawg
+                QCoreApplication.processEvents()
+            if self._keep_processing:
+                stream.start_stream()
+                log.info(f'Recording audio to {self.audio_path}')
+                while stream.is_active() and self._keep_processing:
+                    # Breathe, dawg
+                    QCoreApplication.processEvents()
+                is_recorded = True
+                log.info('Finished recording audio.')
+            else:
+                log.info('Quitting audio processor before start of recording.')
+        stream.stop_stream()
+        stream.close()
+        audio.terminate()
+        if not is_recorded:
+            print(f'deleting audio file `{self.audio_path}`')
+            log.info(f'Deleting empty audio file `{self.audio_path}`')
+            self.audio_path.unlink(missing_ok=False)
+        log.info('Exiting audio processor.')
+        self.finished.emit()
 
-    def stop(self):
-        self._keep_processing = False
+    def _callback(self, in_data, frame_count, time_info, status):
+        '''For async audio recording. See pyaudio docs.'''
+        self.audio_file.writeframes(in_data)
+        return (in_data, pyaudio.paContinue)

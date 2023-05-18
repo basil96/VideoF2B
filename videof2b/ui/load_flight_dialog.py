@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # VideoF2B - Draw F2B figures from video
-# Copyright (C) 2021 - 2022  Andrey Vasilik - basil96
+# Copyright (C) 2021 - 2023  Andrey Vasilik - basil96
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@ The dialog that loads the input video.
 from pathlib import Path
 
 from PySide6 import QtCore, QtGui, QtWidgets
+
 from videof2b.core.common import (DEFAULT_FLIGHT_RADIUS, DEFAULT_MARKER_HEIGHT,
                                   DEFAULT_MARKER_RADIUS)
 from videof2b.core.common.path import path_to_str, str_to_path

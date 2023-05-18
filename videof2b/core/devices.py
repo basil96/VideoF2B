@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # VideoF2B - Draw F2B figures from video
-# Copyright (C) 2021  Andrey Vasilik - basil96@users.noreply.github.com
+# Copyright (C) 2021 - 2023  Andrey Vasilik - basil96
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -60,7 +60,7 @@ class CameraDevice:
             # Dynamically discover the list of available "video\d+" devices and enumerate them.
             vstr = subprocess.run(
                 ['ls', '/sys/class/video4linux'],
-                stdout=subprocess.PIPE
+                stdout=subprocess.PIPE, check=False
             ).stdout.decode('utf8')
             log.debug(f'{vstr = }')
             video_sources = []
@@ -73,7 +73,7 @@ class CameraDevice:
             for camera_index, video_source in video_sources:
                 camera_name = subprocess.run(
                     ['cat', f'/sys/class/video4linux/{video_source}/name'],
-                    stdout=subprocess.PIPE
+                    stdout=subprocess.PIPE, check=False
                 ).stdout.decode('utf-8')
                 camera_name = camera_name.replace('\n', '')
                 if camera_name:
