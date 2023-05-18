@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # VideoF2B - Draw F2B figures from video
-# Copyright (C) 2021-2022  Andrey Vasilik - basil96
+# Copyright (C) 2021-2023  Andrey Vasilik - basil96
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -130,7 +130,7 @@ def set_up_logging(log_path, level=logging.DEBUG):
     )
     formatter = logging.Formatter(
         '%(asctime)s - '
-        '%(name)-26s - '
+        '%(name)-30s - '
         '%(threadName)-12s - '
         '%(levelname)-8s - '
         '%(message)s'

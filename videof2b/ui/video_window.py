@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # VideoF2B - Draw F2B figures from video
-# Copyright (C) 2021  Andrey Vasilik - basil96
+# Copyright (C) 2021 - 2023  Andrey Vasilik - basil96
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,7 +19,6 @@
 The video window of VideoF2B application.
 '''
 import logging
-from pathlib import Path
 
 from PySide6 import QtCore, QtGui, QtWidgets
 

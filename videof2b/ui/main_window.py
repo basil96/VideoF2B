@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # VideoF2B - Draw F2B figures from video
-# Copyright (C) 2021 - 2022  Andrey Vasilik - basil96
+# Copyright (C) 2021 - 2023  Andrey Vasilik - basil96
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@ from datetime import datetime, timedelta
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from videof2b.core.audio_processor import AudioProcessor
 from videof2b.core.calibration import CalibratorReturnCodes, CameraCalibrator
 from videof2b.core.common import FigureTypes, SphereManipulations
 from videof2b.core.common.store import StoreProperties
@@ -362,6 +363,8 @@ class MainWindow(QtWidgets.QMainWindow, UIMainWindow, StoreProperties):
         self._proc_thread = None
         self._last_flight = None
         self._calibrator = None
+        self._audio_proc: AudioProcessor = None
+        self._audio_proc_thread = None
         # pylint: disable=no-member
         # Set up signals and slots that are NOT related to VideoProcessor
         self.act_file_load.triggered.connect(self.on_load_flight)
@@ -516,9 +519,20 @@ class MainWindow(QtWidgets.QMainWindow, UIMainWindow, StoreProperties):
         '''Tell the processor to toggle the drawn state of figure diagnostics.'''
         self.figure_diags_changed.emit(self.sender().isChecked())
 
+    def _init_audio_proc(self):
+        '''Initialize the audio processor (used during live video only).'''
+        self._audio_proc = AudioProcessor(input_device_index=1)
+        # Connect signals that communicate between threads.
+        self.stop_processor.connect(self._audio_proc.stop, QtCore.Qt.QueuedConnection)
+        self.start_live_recording.connect(self._audio_proc.start, QtCore.Qt.QueuedConnection)
+        self._proc.new_live_output_name.connect(self._audio_proc.on_new_name, QtCore.Qt.QueuedConnection)
+
     def _init_proc(self):
         '''Create a new instance of the video processor and connect all its signals.'''
         self._proc = VideoProcessor()
+
+        if self._last_flight is not None and self._last_flight.is_live:
+            self._init_audio_proc()
 
         # Connect signals that communicate between threads.
         # DO NOT call the processor's API directly from
@@ -602,6 +616,12 @@ class MainWindow(QtWidgets.QMainWindow, UIMainWindow, StoreProperties):
         self.act_figure_start.triggered.disconnect(self.on_figure_start)
         self.act_figure_end.triggered.disconnect(self.on_figure_end)
         self._proc = None
+        if self._last_flight is not None and self._last_flight.is_live:
+            self._deinit_audio_proc()
+
+    def _deinit_audio_proc(self):
+        '''Teardown the audio processor.'''
+        self._audio_proc = None
 
     def _init_live_window(self):
         log.debug('Creating live video window')
@@ -616,10 +636,10 @@ class MainWindow(QtWidgets.QMainWindow, UIMainWindow, StoreProperties):
         # TODO: is there a scenario when we would NOT want to start processing a Flight immediately?
         diag = LoadFlightDialog(self)
         if diag.exec() == QtWidgets.QDialog.Accepted:
+            self._last_flight = diag.flight
             self._init_proc()
             if diag.flight.is_live and diag.show_live_video_window:
                 self._init_live_window()
-            self._last_flight = diag.flight
             # At this point, the flight data is validated. Load it into the processor.
             self._load_flight(diag.flight)
 
@@ -638,6 +658,8 @@ class MainWindow(QtWidgets.QMainWindow, UIMainWindow, StoreProperties):
             # Let it get handled by excepthook.
             raise load_exc from RuntimeError('Problem in flight loader.')
         self._pre_processing()
+        if flight.is_live:
+            self.start_audio_proc_thread()
         self.start_proc_thread()
 
     def _pre_processing(self):
@@ -650,7 +672,7 @@ class MainWindow(QtWidgets.QMainWindow, UIMainWindow, StoreProperties):
         self._reset_figure_controls()
         self.act_pause_resume.setIcon(MyIcons().pause)
         self.act_pause_resume.setEnabled(True)
-        if self._last_flight.is_live:
+        if self._last_flight is not None and self._last_flight.is_live:
             self.instruct_lbl.show()
             self.instruct_lbl.setStyleSheet('QLabel { color : red; }')
             self.instruct_lbl.setText('Press R to start recording.')
@@ -754,6 +776,22 @@ class MainWindow(QtWidgets.QMainWindow, UIMainWindow, StoreProperties):
         self.on_proc_starting()
         # Start the thread
         self._proc_thread.start()
+
+    def start_audio_proc_thread(self):
+        '''Starts the audio processor on a worker thread.'''
+        if self._audio_proc is None:
+            log.warning('Audio not available.')
+            return
+        self._audio_proc_thread = QtCore.QThread()
+        self._audio_proc_thread.setObjectName('AudioProcessorThread')
+        self._audio_proc.moveToThread(self._audio_proc_thread)
+        self._audio_proc_thread.started.connect(self._audio_proc.run)
+        # self._audio_proc.finished.connect(self.on_audio_proc_finished)
+        self._audio_proc.finished.connect(self._audio_proc_thread.exit)
+        self._audio_proc.finished.connect(self._audio_proc.deleteLater)
+        self._audio_proc_thread.finished.connect(self._audio_proc_thread.deleteLater)
+        # self._audio_proc_thread.finished.connect(self.on_audio_proc_thread_finished)
+        self._audio_proc_thread.start()
 
     def on_progress_updated(self, data):
         '''Display video processing progress.'''

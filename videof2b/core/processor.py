@@ -108,6 +108,8 @@ class VideoProcessor(QObject, StoreProperties):
     ar_geometry_available = Signal(bool)
     # Emits when a new frame of video has been processed and is available for display.
     new_frame_available = Signal(QImage)
+    # Emits the name of the live video file when it is determined.
+    new_live_output_name = Signal(Path)
     # Emits when we send a progress update.
     progress_updated = Signal(tuple)
     # Emits when the processing loop is about to return.
@@ -173,6 +175,17 @@ class VideoProcessor(QObject, StoreProperties):
         self._frame_delta = None
         self.is_paused = False
         self.is_recording = True
+        # The offset between audio and video streams, in seconds.
+        # Appears to be more or less constant for all practical purposes.
+        self._AUDIO_SYNC_OFFSET = 0.370
+        # Drop this many frames to sync with live audio. Calculated during live capture based on framerate.
+        self._num_sync_frames = 0
+        # ======================================================================
+        # TODO: I believe there is a better way to handle audio-video sync.
+        # Try starting the audio stream at the same time as the video capture,
+        # or as close as possible to it. This will require signaling between
+        # `AudioProcessor` and `VideoProcessor`.
+        # ======================================================================
         # Set this flag during an event handler that requires frame update while paused.
         # This flag is just an optimization to keep the CPU
         # from being unnecessarily busy while we are paused.
@@ -197,6 +210,7 @@ class VideoProcessor(QObject, StoreProperties):
             self._decimate_frames = self.flight.is_live_decimator_enabled
             if self._decimate_frames:
                 self._video_fps *= 0.5
+            self._num_sync_frames = int(round(self._video_fps * self._AUDIO_SYNC_OFFSET))
 
         self._video_spf = 1. / self._video_fps
         self.num_input_frames = int(self.flight.cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -677,6 +691,7 @@ class VideoProcessor(QObject, StoreProperties):
         live_video_name_out = f'{live_video_name_stem}_out.mp4'
         self.flight.video_path = Path(live_video_name_stem)
         self.flight.output_path = ProcessorSettings.live_videos / live_video_name_out
+        self.new_live_output_name.emit(self.flight.output_path)
         self._stream_out = cv2.VideoWriter(
             str(self.flight.output_path),
             self._fourcc, self._video_fps,
@@ -741,6 +756,9 @@ class VideoProcessor(QObject, StoreProperties):
         self._fps = FPS().start()
         # Helper flag for decimating every other frame during live video, if requested.
         drop_frame = True
+        # Live video/audio sync variables
+        sync_frame_counter = 0
+        do_sync = not self.is_recording
 
         # ============================ PROCESSING LOOP ======================================================
         log.debug('Processing loop begins.')
@@ -801,6 +819,14 @@ class VideoProcessor(QObject, StoreProperties):
                 self.new_frame_available.emit(cv_img_to_qimg(self._frame))
                 QCoreApplication.processEvents()
                 continue
+
+            # sync live video with audio if applicable
+            if do_sync:
+                sync_frame_counter += 1
+                if sync_frame_counter < self._num_sync_frames:
+                    continue
+                else:
+                    do_sync = False
 
             self.frame_idx += 1
 
