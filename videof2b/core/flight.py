@@ -132,9 +132,9 @@ class Flight(QObject):
             log.info('Using live video.')
             # Use the provided input FPS.
             fps_in = self.live_fps
-            # The computing system's actual live FPS rate
+            # The computing system's actual (worst-case) live FPS rate
             # (find experimentally)
-            fps_out = 25.
+            fps_out = 20.
             # The length of the desired real-time session, in seconds.
             # Include allowance for operator pause time.
             session_time = 360 + 20
