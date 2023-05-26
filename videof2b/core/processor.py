@@ -459,6 +459,8 @@ class VideoProcessor(QObject, StoreProperties):
                     if self._frame is None:
                         log.warning('empty live frame')
                         continue
+                    # Every incoming live frame must be undistorted for proper pose estimation
+                    self._frame = self.cam.undistort(self._frame)
                     self._frame_loc = self._frame
                     self._frame = self._draw_loc_points(self.flight.loc_pts, self._frame)
                     self.new_frame_available.emit(cv_img_to_qimg(self._frame))
