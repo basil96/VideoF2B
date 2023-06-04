@@ -110,7 +110,6 @@ class AudioProcessor(QObject):
         stream.close()
         audio.terminate()
         if not is_recorded:
-            print(f'deleting audio file `{self.audio_path}`')
             log.info(f'Deleting empty audio file `{self.audio_path}`')
             self.audio_path.unlink(missing_ok=False)
         log.info('Exiting audio processor.')
@@ -118,5 +117,7 @@ class AudioProcessor(QObject):
 
     def _callback(self, in_data, frame_count, time_info, status):
         '''For async audio recording. See pyaudio docs.'''
-        self.audio_file.writeframes(in_data)
-        return (in_data, pyaudio.paContinue)
+        if self.audio_file is not None and self._keep_processing:
+            self.audio_file.writeframes(in_data)
+            return (in_data, pyaudio.paContinue)
+        return (in_data, pyaudio.paAbort)
