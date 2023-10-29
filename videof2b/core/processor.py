@@ -136,7 +136,7 @@ class VideoProcessor(QObject, StoreProperties):
         self.cam: CalCamera = None
         self._full_frame_size: Tuple[int, int] = None
         self._fourcc: cv2.VideoWriter_fourcc = None
-        self._stream_out: cv2.VideoWriter = None
+        self._stream_out: FileVideoOutputStream = None
         self._output_size = None
         self._fps: FPS = None
         self._det_scale: float = None
@@ -694,10 +694,10 @@ class VideoProcessor(QObject, StoreProperties):
         self.flight.video_path = Path(live_video_name_stem)
         self.flight.output_path = ProcessorSettings.live_videos / live_video_name_out
         self.new_live_output_name.emit(self.flight.output_path)
-        self._stream_out = cv2.VideoWriter(
+        self._stream_out = FileVideoOutputStream(
             str(self.flight.output_path),
             self._fourcc, self._video_fps,
-            self._output_size)
+            self._output_size).start()
         log.info('Start recording live video.')
         # The request to start live recording may be delayed for a long time.
         # Restart FPS meter to be fair.
