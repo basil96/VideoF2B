@@ -159,7 +159,6 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
                     marker_height=float(self.marker_height_txt.text())
                     # TODO: include `sphere_offset` as well. Add a grid widget to UI for the XYZ values.
                 )
-                self.settings.setValue('mru/video_dir', self.video_path_txt.path.parent)
                 # Cal path is optional, so check it first
                 cal_path = self.cal_path_txt.path
                 if path_to_str(cal_path) and cal_path.exists():
@@ -174,6 +173,8 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
                 QtWidgets.QMessageBox.Ok
             )
             return None  # Keeps the window up
+        # Store the MRU video path
+        self.settings.setValue('mru/video_dir', self.flight.video_path.parent)
         return super().accept()
 
     def on_skip_locate_changed(self):
