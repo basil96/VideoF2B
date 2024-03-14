@@ -80,6 +80,7 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         self.video_path_lbl = QtWidgets.QLabel('Video source:', self)
 
         is_live_video_enabled = self.settings.value('core/enable_live_video')
+        use_live_video = self.settings.value('mru/use_live_video')
         self.live_chk = QtWidgets.QCheckBox('&Live video', self)
         self.live_device_list = QtWidgets.QComboBox(self)
         self.live_rates_lbl = QtWidgets.QLabel('Input frame rate:', self)
@@ -93,6 +94,7 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         self.live_show_vidwin_chk.setChecked(self.show_live_video_window)
         self.live_name_lbl = QtWidgets.QLabel('Stream label:', self)
         self.live_name_txt = QtWidgets.QLineEdit('LiveStream', self)
+        self.live_chk.setChecked(use_live_video)
         self.live_chk.setVisible(is_live_video_enabled)
 
         self.video_path_txt = PathEdit(
@@ -120,9 +122,17 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
             'Height markers: distance to center (m)', self)
         self.marker_height_lbl = QtWidgets.QLabel(
             'Height markers: height above center of circle (m)', self)
-        self.flight_radius_txt = QtWidgets.QLineEdit(f'{DEFAULT_FLIGHT_RADIUS:.1f}', self)
-        self.marker_radius_txt = QtWidgets.QLineEdit(f'{DEFAULT_MARKER_RADIUS:.1f}', self)
-        self.marker_height_txt = QtWidgets.QLineEdit(f'{DEFAULT_MARKER_HEIGHT:.1f}', self)
+        flight_radius = DEFAULT_FLIGHT_RADIUS
+        marker_radius = DEFAULT_MARKER_RADIUS
+        marker_height = DEFAULT_MARKER_HEIGHT
+        if use_live_video:
+            # Use MRU values for faster live workflow
+            flight_radius = self.settings.value('mru/flight_radius')
+            marker_radius = self.settings.value('mru/marker_radius')
+            marker_height = self.settings.value('mru/marker_height')
+        self.flight_radius_txt = QtWidgets.QLineEdit(f'{flight_radius:.1f}', self)
+        self.marker_radius_txt = QtWidgets.QLineEdit(f'{marker_radius:.1f}', self)
+        self.marker_height_txt = QtWidgets.QLineEdit(f'{marker_height:.2f}', self)
         self.meas_grid = QtWidgets.QGridLayout()
         self.meas_grid.setObjectName('meas_grid')
         self.meas_grid.addWidget(self.flight_radius_lbl, 1, 1, 1, 1)
@@ -165,6 +175,10 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         video_path = self.video_path_txt.path
         cam_idx = None
         live_fps_value = None
+        # TODO: use proper validation for these numeric fields!
+        flight_radius = float(self.flight_radius_txt.text())
+        marker_radius = float(self.marker_radius_txt.text())
+        marker_height = float(self.marker_height_txt.text())
         if is_live:
             box_idx = self.live_device_list.currentIndex()
             cam_idx = self.live_device_list.itemData(box_idx)
@@ -173,8 +187,12 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
             self.settings.setValue('mru/live_video_input_fps_idx', self.live_rates_list.currentIndex())
             video_path = Path(self.live_name_txt.text())
             live_fps_value = self._video_input_rates[self.live_rates_list.currentIndex()]
+            self.settings.setValue('mru/flight_radius', flight_radius)
+            self.settings.setValue('mru/marker_radius', marker_radius)
+            self.settings.setValue('mru/marker_height', marker_height)
             self.settings.setValue('core/enable_live_decimator', self.is_live_decimator_enabled)
             self.settings.setValue('ui/show_live_video_window', self.show_live_video_window)
+        self.settings.setValue('mru/use_live_video', is_live)
         self.flight = Flight(
             video_path,
             is_live=is_live,
@@ -183,10 +201,9 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
             live_fps=live_fps_value,
             enable_decimator=self.is_live_decimator_enabled,
             skip_locate=self.skip_locate_chk.isChecked(),
-            # TODO: use proper validation for these numeric fields!
-            flight_radius=float(self.flight_radius_txt.text()),
-            marker_radius=float(self.marker_radius_txt.text()),
-            marker_height=float(self.marker_height_txt.text())
+            flight_radius=flight_radius,
+            marker_radius=marker_radius,
+            marker_height=marker_height
             # TODO: include `sphere_offset` as well. Add a grid widget to UI for the XYZ values.
         )
         if not is_live:
