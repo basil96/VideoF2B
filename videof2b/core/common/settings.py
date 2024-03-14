@@ -21,6 +21,8 @@ from pathlib import Path
 
 from PySide6.QtCore import QByteArray, QPoint, QSettings
 
+from videof2b.core.common import DEFAULT_FLIGHT_RADIUS, DEFAULT_MARKER_HEIGHT, DEFAULT_MARKER_RADIUS
+
 
 class Settings(QSettings):
     '''Simple wrapper around QSettings.
@@ -36,6 +38,10 @@ class Settings(QSettings):
         'mru/video_dir': Path('..'),
         'mru/cal_dir': Path('..'),
         'mru/crashreport_dir': Path('..'),
+        'mru/use_live_video': False,  # MRU state of "live video" checkbox in flight dialog
+        'mru/flight_radius': DEFAULT_FLIGHT_RADIUS,
+        'mru/marker_radius': DEFAULT_MARKER_RADIUS,
+        'mru/marker_height': DEFAULT_MARKER_HEIGHT,
         'mru/live_device_idx': 0,
         'mru/live_device_name': '',
         'mru/live_video_input_fps_idx': 6,
