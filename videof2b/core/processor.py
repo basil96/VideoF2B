@@ -136,7 +136,9 @@ class VideoProcessor(QObject, StoreProperties):
         self.cam: CalCamera = None
         self._full_frame_size: Tuple[int, int] = None
         self._fourcc: cv2.VideoWriter_fourcc = None
+        self._fourcc_raw: cv2.VideoWriter_fourcc = None
         self._stream_out: FileVideoOutputStream = None
+        self._stream_raw_out: FileVideoOutputStream = None
         self._output_size = None
         self._fps: FPS = None
         self._det_scale: float = None
@@ -148,6 +150,7 @@ class VideoProcessor(QObject, StoreProperties):
         self._crop_idx = None
         self._artist: Drawing = None
         self._frame: np.ndarray = None  # the frame currently being processed for output.
+        self._frame_raw: np.ndarray = None  # the frame currently being processed for output.
         self._frame_loc: np.ndarray = None  # the current frame during pose estimation.
         self.frame_idx: int = None
         self.frame_time: float = None
@@ -227,8 +230,10 @@ class VideoProcessor(QObject, StoreProperties):
         log.debug(f'detector det_scale = {self._det_scale:.4f}')
         # Platform-dependent stuff
         self._fourcc = cv2.VideoWriter_fourcc(*'H264')
+        self._fourcc_raw = cv2.VideoWriter_fourcc(*'H264')
         if is_win():
             self._fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            self._fourcc_raw = cv2.VideoWriter_fourcc(*'mp4v')
         # Detector
         max_track_len = int(ProcessorSettings.max_track_time * self._video_fps)
         self._detector = Detector(max_track_len, self._det_scale)
@@ -260,6 +265,7 @@ class VideoProcessor(QObject, StoreProperties):
         log.debug(f'full frame size  = {self._full_frame_size}')
         log.debug(f'input ratios w,h = {w_ratio:.4f}, {h_ratio:.4f}')
         self._stream_out = None
+        self._stream_raw_out = None
         self.flight.output_path = path_out
         self._output_size = (int(self._inp_width), int(self._inp_height))
         if self._is_size_restorable:
@@ -691,12 +697,18 @@ class VideoProcessor(QObject, StoreProperties):
         timestr = time.strftime("%Y-%m-%d@%H.%M.%S")
         live_video_name_stem = f'live_{timestr}_{self.flight.video_path.name}'
         live_video_name_out = f'{live_video_name_stem}_out.mp4'
+        raw_output_name = f'{live_video_name_stem}_raw.mp4'
+        raw_output_path = ProcessorSettings.live_videos / raw_output_name
         self.flight.video_path = Path(live_video_name_stem)
         self.flight.output_path = ProcessorSettings.live_videos / live_video_name_out
         self.new_live_output_name.emit(self.flight.output_path)
         self._stream_out = FileVideoOutputStream(
             str(self.flight.output_path),
             self._fourcc, self._video_fps,
+            self._output_size).start()
+        self._stream_raw_out = FileVideoOutputStream(
+            str(raw_output_path),
+            self._fourcc_raw, self._video_fps,
             self._output_size).start()
         log.info('Start recording live video.')
         # The request to start live recording may be delayed for a long time.
@@ -767,6 +779,7 @@ class VideoProcessor(QObject, StoreProperties):
         cap = self.flight.cap
         while cap.more() and self._keep_processing:
             self._frame = cap.read()
+            self._frame_raw = self._frame.copy()
 
             if self._frame is None:
                 num_empty_frames += 1
@@ -831,6 +844,10 @@ class VideoProcessor(QObject, StoreProperties):
                     do_sync = False
 
             self.frame_idx += 1
+
+            # Write out the raw (original) frame to the raw stream if it was defined (live video only)
+            if self._stream_raw_out is not None:
+                self._stream_raw_out.write(self._frame_raw)
 
             if self.is_paused:
                 self._fps.pause()
@@ -918,6 +935,8 @@ class VideoProcessor(QObject, StoreProperties):
         # Clean up
         if self._stream_out is not None:
             self._stream_out.stop()
+        if self._stream_raw_out is not None:
+            self._stream_raw_out.stop()
         if self.flight.is_located and ProcessorSettings.perform_3d_tracking:
             self._data_writer.close()
 
