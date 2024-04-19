@@ -173,12 +173,12 @@ class Flight(QObject):
             'sphere_offset': self.sphere_offset,
             'loc_pts': self.loc_pts,
         }
-        toml.dump(data, path.open(mode='w'))
+        toml.dump(data, path.open(mode='w', encoding='utf8'))
 
     @staticmethod
     def read(path: Path):
         log.info(f'Reading a flight from {path.name}')
-        data = toml.load(path.open('r'))
+        data = toml.load(path.open('r', encoding='utf8'))
         pts = [(x, y) for x, y in data['loc_pts']]
         result = Flight(
             Path(data['vid_path']),
