@@ -73,7 +73,12 @@ class Flight(QObject):
         self.video_path = vid_path
         self.is_live = is_live
         self.calibration_path = cal_path
-        self.is_calibrated = cal_path is not None and cal_path.exists()
+        self.is_calibrated = False
+        if cal_path is not None:
+            if cal_path.exists():
+                self.is_calibrated = True
+            else:
+                log.warning(f'Calibration path {cal_path} is invalid. AR geometry will not be available.')
         self.is_located = False
         self.is_ar_enabled = True
         self.skip_locate = kwargs.pop('skip_locate', False)
@@ -92,7 +97,7 @@ class Flight(QObject):
         )
         # Locator points. This list grows and shrinks during the locating procedure.
         self.loc_pts = kwargs.pop('loc_pts', [])
-        self.is_located = len(self.loc_pts) == 4
+        self.is_located = self.is_calibrated and len(self.loc_pts) == 4
         # Log some basic info.
         log.info('Creating a new flight =========')
         log.info(f'      Video path: {self.video_path.name}')
