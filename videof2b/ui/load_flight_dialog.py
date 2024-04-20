@@ -19,9 +19,11 @@
 The dialog that loads the input video.
 '''
 
+import logging
 from pathlib import Path
 
 from PySide6 import QtCore, QtWidgets
+
 from videof2b.core.common import (DEFAULT_FLIGHT_RADIUS, DEFAULT_MARKER_HEIGHT,
                                   DEFAULT_MARKER_RADIUS)
 from videof2b.core.common.path import path_to_str
@@ -29,6 +31,8 @@ from videof2b.core.common.store import StoreProperties
 from videof2b.core.flight import Flight
 from videof2b.ui import EXTENSIONS_VIDEO
 from videof2b.ui.widgets import PathEdit, PathEditType
+
+log = logging.getLogger(__name__)
 
 
 class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
@@ -141,12 +145,12 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         '''
         if not self._validate():
             return None  # Keeps the window up
-        if self.read_edit.path is not None:
-            # Load from file
-            self.flight = Flight.read(self.read_edit.path)
-        else:
-            file_not_found_msg = ''
-            try:
+        file_not_found_msg = ''
+        try:
+            if self.read_edit.path is not None:
+                # Load from file
+                self.flight = Flight.read(self.read_edit.path)
+            else:
                 # Load from UI
                 self.flight = Flight(
                     self.video_path_txt.path,
@@ -163,15 +167,14 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
                 cal_path = self.cal_path_txt.path
                 if path_to_str(cal_path) and cal_path.exists():
                     self.settings.setValue('mru/cal_dir', cal_path.parent)
-            except FileNotFoundError as file_err:
-                file_not_found_msg = f'\nFile not found: {self.video_path_txt.path}'
+        except FileNotFoundError as file_err:
+            file_not_found_msg = f'\nFile not found: {file_err.filename}'
         # Do not proceed if flight failed to load
-        if not self.flight.is_ready:
+        if self.flight is None or not self.flight.is_ready:
+            err_msg = f'Failed to load video source.{file_not_found_msg}'
+            log.error(err_msg)
             QtWidgets.QMessageBox.critical(
-                self, 'Error',
-                f'Failed to load video source.{file_not_found_msg}',
-                QtWidgets.QMessageBox.Ok
-            )
+                self, 'Error', err_msg, QtWidgets.QMessageBox.Ok)
             return None  # Keeps the window up
         # Store the MRU video path
         self.settings.setValue('mru/video_dir', self.flight.video_path.parent)
