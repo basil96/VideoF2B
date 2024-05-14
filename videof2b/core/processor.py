@@ -453,6 +453,7 @@ class VideoProcessor(QObject, StoreProperties):
         log.debug('Entering VideoProcessor._locate()')
         log.debug(f'Asking to display the locating frame: {self._frame_loc.shape}')
         self.locating_started.emit()
+        self.flight.verify_locator_points_defined()
         # Kind of a hack, but it works: force the first instruction signal and frame display.
         self.flight.on_locator_points_changed()
         self._keep_locating = True
@@ -490,6 +491,8 @@ class VideoProcessor(QObject, StoreProperties):
             log.error('Pose estimation failed. Cannot process video.')
             self.ret_code = ProcessorReturnCodes.POSE_ESTIMATION_FAILED
             return False
+        # Save MRU locating points
+        self.settings.setValue('mru/cam_loc_pts', self.flight.loc_pts)
         # Finally, locate the artist.
         self._artist.locate(self.cam, self.flight, center=self._sphere_offset)
         # Signal the updated state of AR geometry availability.
