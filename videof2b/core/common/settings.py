@@ -42,9 +42,14 @@ class Settings(QSettings):
         'mru/flight_radius': DEFAULT_FLIGHT_RADIUS,
         'mru/marker_radius': DEFAULT_MARKER_RADIUS,
         'mru/marker_height': DEFAULT_MARKER_HEIGHT,
+        # Live video things
         'mru/live_device_idx': 0,
         'mru/live_device_name': '',
         'mru/live_video_input_fps_idx': 6,
+        # Last successful cam locating points
+        'mru/use_cam_loc': False,
+        'mru/cam_loc_pts': [],
+        # UI things
         'ui/main_window_position': QPoint(0, 0),
         'ui/main_window_geometry': QByteArray(),
         'ui/main_window_state': QByteArray(),

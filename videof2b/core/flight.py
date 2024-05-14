@@ -115,6 +115,7 @@ class Flight(QObject):
         log.info(f'    mark radius = {self.marker_radius} m')
         log.info(f'    mark height = {self.marker_height} m')
         log.info(f'  sphere offset = {self.sphere_offset} m')
+        log.info(f'locating points = {self.loc_pts}')
         # Load the video stream
         self._load_stream()
         # Log some more to report the stream's status.
@@ -169,8 +170,12 @@ class Flight(QObject):
         if len(self.loc_pts) < self.num_obj_pts:
             self.loc_pts.append(point)
             self.on_locator_points_changed()
-        # If we just reached the limit, then emit
-        # that all required points have been defined.
+        self.verify_locator_points_defined()
+
+    def verify_locator_points_defined(self):
+        '''If we just reached the limit, then emit
+        that all required points have been defined.
+        '''
         if len(self.loc_pts) == self.num_obj_pts:
             self.locator_points_defined.emit()
 

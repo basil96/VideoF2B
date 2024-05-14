@@ -19,6 +19,7 @@
 The dialog that loads the input video.
 '''
 
+import logging
 from pathlib import Path
 
 from PySide6 import QtCore, QtGui, QtWidgets
@@ -31,6 +32,8 @@ from videof2b.core.devices import CameraDevice
 from videof2b.core.flight import Flight
 from videof2b.ui import EXTENSIONS_VIDEO
 from videof2b.ui.widgets import PathEdit, PathEditType
+
+log = logging.getLogger(__name__)
 
 
 class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
@@ -62,6 +65,8 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         self.flight = None
         self.is_live_decimator_enabled = self.settings.value('core/enable_live_decimator')
         self.show_live_video_window = self.settings.value('ui/show_live_video_window')
+        self.mru_cam_loc_pts = self.settings.value('mru/cam_loc_pts')
+        log.debug(f'{self.mru_cam_loc_pts = }')
         self.setup_ui()
         self.setWindowTitle('Load a Flight')
         # pylint: disable=no-member
@@ -81,6 +86,7 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
 
         is_live_video_enabled = self.settings.value('core/enable_live_video')
         use_live_video = self.settings.value('mru/use_live_video')
+        use_mru_cam_loc = self.settings.value('mru/use_cam_loc')
         self.live_chk = QtWidgets.QCheckBox('&Live video', self)
         self.live_device_list = QtWidgets.QComboBox(self)
         self.live_rates_lbl = QtWidgets.QLabel('Input frame rate:', self)
@@ -115,6 +121,8 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         )
         self.cal_path_txt.filters = 'Calibration files (*.npz);;All files (*)'
         self.skip_locate_chk = QtWidgets.QCheckBox('&Skip camera location', self)
+        self.use_mru_cam_location = QtWidgets.QCheckBox('Use last known &camera location', self)
+        self.use_mru_cam_location.setChecked(use_mru_cam_loc)
         # Measurement inputs
         self.flight_radius_lbl = QtWidgets.QLabel(
             'Flight radius (m)', self)
@@ -161,6 +169,7 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         self.main_layout.addWidget(self.cal_path_lbl)
         self.main_layout.addWidget(self.cal_path_txt)
         self.main_layout.addWidget(self.skip_locate_chk)
+        self.main_layout.addWidget(self.use_mru_cam_location)
         self.main_layout.addLayout(self.meas_grid)
         self.main_layout.addSpacerItem(QtWidgets.QSpacerItem(20, 20))
         self.main_layout.addLayout(self.bottom_layout)
@@ -175,6 +184,7 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         video_path = self.video_path_txt.path
         cam_idx = None
         live_fps_value = None
+        use_mru_cam_loc = self.use_mru_cam_location.isChecked()
         # TODO: use proper validation for these numeric fields!
         flight_radius = float(self.flight_radius_txt.text())
         marker_radius = float(self.marker_radius_txt.text())
@@ -193,6 +203,9 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
             self.settings.setValue('core/enable_live_decimator', self.is_live_decimator_enabled)
             self.settings.setValue('ui/show_live_video_window', self.show_live_video_window)
         self.settings.setValue('mru/use_live_video', is_live)
+        loc_pts = []
+        if use_mru_cam_loc:
+            loc_pts = self.settings.value('mru/cam_loc_pts')
         self.flight = Flight(
             video_path,
             is_live=is_live,
@@ -203,7 +216,8 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
             skip_locate=self.skip_locate_chk.isChecked(),
             flight_radius=flight_radius,
             marker_radius=marker_radius,
-            marker_height=marker_height
+            marker_height=marker_height,
+            loc_pts=loc_pts,
             # TODO: include `sphere_offset` as well. Add a grid widget to UI for the XYZ values.
         )
         if not is_live:
@@ -212,6 +226,7 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         cal_path = self.cal_path_txt.path
         if path_to_str(cal_path) and cal_path.exists():
             self.settings.setValue('mru/cal_dir', cal_path.parent)
+        self.settings.setValue('mru/use_cam_loc', self.use_mru_cam_location.isChecked())
         # Do not proceed if flight failed to load
         if not self.flight.is_ready:
             QtWidgets.QMessageBox.critical(
@@ -282,6 +297,8 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         self.video_path_txt.setVisible(not is_live)
         if is_live:
             self._populate_live_list()
+            # Set the "use MRU cam location" checkbox whenever user switches to live video.
+            self.use_mru_cam_location.setChecked(True)
 
     def on_live_decimate_state_changed(self):
         '''Update the decimator setting.'''
