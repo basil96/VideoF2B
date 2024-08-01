@@ -98,6 +98,7 @@ class CalCamera(QObject):
         self.mtx = npzfile['mtx']
         self.dist = npzfile['dist']
         self.roi = npzfile['roi']
+        log.debug(f'ROI from cal file: {self.roi}')
         self.newcameramtx = npzfile['newcameramtx']
         self.dist_zero = np.zeros_like(self.dist)
 
@@ -120,6 +121,26 @@ class CalCamera(QObject):
         # print(f'scaled roi =\n{roi}')
         self.newcameramtx = newcameramtx
         self.roi = roi
+        log.debug(f'Cam frame size:   {self.frame_size}')
+        log.debug(f'ROI after calc:   {self.roi}')
+        # Adjust ROI size so that its aspect ratio matches the camera's aspect
+        # while keeping the ROI within the calibrated region.
+        fw, fh = self.frame_size
+        rw, rh = self.roi[2:]
+        fa = fw / fh
+        ra = rw / rh
+        # Adjust ROI only if the aspect ratios differ
+        if abs(ra - fa) > 1e-4:
+            if ra > fa:
+                # ROI aspect is wider than frame aspect.
+                # Adjust ROI width to match ROI aspect to frame aspect, keeping ROI height the same.
+                rw = int(fa * rh)
+            else:
+                # ROI aspect is taller than frame aspect.
+                # Adjust ROI height to match ROI aspect to frame aspect, keeping ROI width the same.
+                rh = int(rw / fa)
+            self.roi = (*self.roi[:2], rw, rh)
+            log.debug(f'ROI after adjust: {self.roi}')
         # Calculate these undistortion maps just once
         self.map1, self.map2 = cv2.initUndistortRectifyMap(
             self.mtx, self.dist, np.eye(3), self.newcameramtx, self.frame_size, cv2.CV_16SC2)
