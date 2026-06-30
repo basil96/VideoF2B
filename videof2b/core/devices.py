@@ -33,7 +33,8 @@ log = logging.getLogger(__name__)
 if is_win():
     import winrt.windows.devices.enumeration as windows_devices
 
-VIDEO_DEVICES = 4
+AUDIO_CAPTURE = 1
+VIDEO_CAPTURE = 4
 PAT_VIDEO_SRC = re.compile(r'video(\d+)')
 
 
@@ -62,13 +63,13 @@ class CameraDevice:
                 ['ls', '/sys/class/video4linux'],
                 stdout=subprocess.PIPE, check=False
             ).stdout.decode('utf8')
-            log.debug(f'{vstr = }')
+            log.debug(f'{vstr=}')
             video_sources = []
             if vstr:
                 video_sources = [s for s in vstr.split('\n') if s]
                 video_ids = [int(PAT_VIDEO_SRC.search(s).group(1)) for s in video_sources]
                 video_sources = zip(video_ids, video_sources)
-            log.debug(f'{video_sources = }')
+            log.debug(f'{video_sources=}')
 
             for camera_index, video_source in video_sources:
                 camera_name = subprocess.run(
@@ -82,4 +83,33 @@ class CameraDevice:
         return cameras
 
     async def get_camera_information_for_windows(self):
-        return await windows_devices.DeviceInformation.find_all_async(VIDEO_DEVICES)
+        return await windows_devices.DeviceInformation.find_all_async(VIDEO_CAPTURE)
+
+
+class AudioDevice:
+
+    def __init__(self):
+        self.devices = []
+
+    def get_device_info(self) -> list:
+        self.devices = []
+        self.devices = self._add_device_information()
+        return self.devices
+
+    def _add_device_information(self) -> list:
+        devices = []
+
+        if is_win():
+            device_info_windows = asyncio.run(self.get_device_information_for_windows())
+            for dev_index, device in enumerate(device_info_windows):
+                dev_name = device.name.replace('\n', '')
+                devices.append({'device_index': dev_index, 'device_name': dev_name})
+
+        elif is_linux():
+            # TODO
+            pass
+
+        return devices
+
+    async def get_device_information_for_windows(self):
+        return await windows_devices.DeviceInformation.find_all_async(AUDIO_CAPTURE)

@@ -28,7 +28,7 @@ from videof2b.core.common import (DEFAULT_FLIGHT_RADIUS, DEFAULT_MARKER_HEIGHT,
                                   DEFAULT_MARKER_RADIUS)
 from videof2b.core.common.path import path_to_str, str_to_path
 from videof2b.core.common.store import StoreProperties
-from videof2b.core.devices import CameraDevice
+from videof2b.core.devices import AudioDevice, CameraDevice
 from videof2b.core.flight import Flight
 from videof2b.ui import EXTENSIONS_VIDEO
 from videof2b.ui.widgets import PathEdit, PathEditType
@@ -66,7 +66,7 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         self.is_live_decimator_enabled = self.settings.value('core/enable_live_decimator')
         self.show_live_video_window = self.settings.value('ui/show_live_video_window')
         self.mru_cam_loc_pts = self.settings.value('mru/cam_loc_pts')
-        log.debug(f'{self.mru_cam_loc_pts = }')
+        log.debug(f'{self.mru_cam_loc_pts=}')
         self.setup_ui()
         self.setWindowTitle('Load a Flight')
         # pylint: disable=no-member
@@ -89,6 +89,7 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         use_mru_cam_loc = self.settings.value('mru/use_cam_loc')
         self.live_chk = QtWidgets.QCheckBox('&Live video', self)
         self.live_device_list = QtWidgets.QComboBox(self)
+        self.live_audio_dev_list = QtWidgets.QComboBox(self)
         self.live_rates_lbl = QtWidgets.QLabel('Input frame rate:', self)
         self.live_rates_list = QtWidgets.QComboBox(self)
         self.live_rates_list.addItems([str(x) for x in self._video_input_rates])
@@ -159,6 +160,7 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         self.main_layout.addWidget(self.live_chk)
         self.main_layout.addWidget(self.video_path_lbl)
         self.main_layout.addWidget(self.live_device_list)
+        self.main_layout.addWidget(self.live_audio_dev_list)
         self.main_layout.addWidget(self.live_rates_lbl)
         self.main_layout.addWidget(self.live_rates_list)
         self.main_layout.addWidget(self.live_decimate_chk)
@@ -288,6 +290,7 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         '''Update UI when the state of the "is live" checkbox changes.'''
         is_live = self.live_chk.isChecked()
         self.live_device_list.setVisible(is_live)
+        self.live_audio_dev_list.setVisible(is_live)
         self.live_rates_lbl.setVisible(is_live)
         self.live_rates_list.setVisible(is_live)
         self.live_decimate_chk.setVisible(is_live)
@@ -311,11 +314,11 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
     def _populate_live_list(self):
         '''Populate the list of live devices on demand.'''
         cam = CameraDevice()
-        devices = cam.get_camera_info()
+        video_devices = cam.get_camera_info()
         mru_cam_idx = self.settings.value('mru/live_device_idx')
         mru_list_idx = None
         self.live_device_list.clear()
-        for i, device in enumerate(devices):
+        for i, device in enumerate(video_devices):
             cam_idx = device['camera_index']
             cam_name = device['camera_name']
             self.live_device_list.addItem(cam_name, userData=cam_idx)
@@ -324,3 +327,11 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         if mru_list_idx is not None:
             if self.live_device_list.itemText(mru_list_idx) == self.settings.value('mru/live_device_name'):
                 self.live_device_list.setCurrentIndex(mru_list_idx)
+        #
+        audio = AudioDevice()
+        audio_devices = audio.get_device_info()
+        self.live_audio_dev_list.clear()
+        for i, device in enumerate(audio_devices):
+            dev_idx = device['device_index']
+            dev_name = device['device_name']
+            self.live_audio_dev_list.addItem(dev_name, userData=dev_idx)
