@@ -909,7 +909,8 @@ class VideoProcessor(QObject, StoreProperties):
 
         log.debug('Processing loop ended, cleaning up...')
         # Stop the stream.
-        # TODO: I get a warning here from opencv, though it doesn't seem to hurt anything. None of the suggested solutions work.
+        # TODO: I get a warning here from opencv, though it doesn't seem to hurt anything.
+        # Solution is to use `cv2.CAP_DSHOW` on Windows only. The change must be made in `imutils`.
         # [ WARN:0] global ...\opencv\modules\videoio\src\cap_msmf.cpp (438) `anonymous-namespace'::SourceReaderCB::~SourceReaderCB terminating async callback
         cap.stop()
         self._fps.stop()
