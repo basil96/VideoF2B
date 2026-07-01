@@ -77,41 +77,43 @@ class AudioProcessor(QObject):
         self._keep_processing = True
         log.info('Initializing audio processor.')
         is_recorded = False
-        while self.audio_path is None:
+        while self.audio_path is None and self._keep_processing:
             # Wait for audio filename to be set
             QCoreApplication.processEvents()
-        with wave.open(str(self.audio_path), 'wb') as self.audio_file:
-            audio = pyaudio.PyAudio()
-            self.audio_file.setnchannels(self._channels)
-            self.audio_file.setsampwidth(audio.get_sample_size(self._format))
-            self.audio_file.setframerate(self._rate)
-            stream = audio.open(format=self._format,
-                                channels=self._channels,
-                                rate=self._rate,
-                                input=True,
-                                input_device_index=self.input_device_index,
-                                start=False,
-                                stream_callback=self._callback)
-            log.info('Audio processor initialized. Waiting for start signal.')
-            while not self._start_recording and self._keep_processing:
-                # Breathe, dawg
-                QCoreApplication.processEvents()
-            if self._keep_processing:
-                stream.start_stream()
-                log.info(f'Recording audio to {self.audio_path}')
-                while stream.is_active() and self._keep_processing:
+        # HACK: split the wait above and the processing below into two or more methods with signalling between them
+        if self._keep_processing:
+            with wave.open(str(self.audio_path), 'wb') as self.audio_file:
+                audio = pyaudio.PyAudio()
+                self.audio_file.setnchannels(self._channels)
+                self.audio_file.setsampwidth(audio.get_sample_size(self._format))
+                self.audio_file.setframerate(self._rate)
+                stream = audio.open(format=self._format,
+                                    channels=self._channels,
+                                    rate=self._rate,
+                                    input=True,
+                                    input_device_index=self.input_device_index,
+                                    start=False,
+                                    stream_callback=self._callback)
+                log.info('Audio processor initialized. Waiting for start signal.')
+                while not self._start_recording and self._keep_processing:
                     # Breathe, dawg
                     QCoreApplication.processEvents()
-                is_recorded = True
-                log.info('Finished recording audio.')
-            else:
-                log.info('Quitting audio processor before start of recording.')
-        stream.stop_stream()
-        stream.close()
-        audio.terminate()
-        if not is_recorded:
-            log.info(f'Deleting empty audio file `{self.audio_path}`')
-            self.audio_path.unlink(missing_ok=False)
+                if self._keep_processing:
+                    stream.start_stream()
+                    log.info(f'Recording audio to {self.audio_path}')
+                    while stream.is_active() and self._keep_processing:
+                        # Breathe, dawg
+                        QCoreApplication.processEvents()
+                    is_recorded = True
+                    log.info('Finished recording audio.')
+                else:
+                    log.info('Quitting audio processor before start of recording.')
+            stream.stop_stream()
+            stream.close()
+            audio.terminate()
+            if not is_recorded:
+                log.info(f'Deleting empty audio file `{self.audio_path}`')
+                self.audio_path.unlink(missing_ok=False)
         log.info('Exiting audio processor.')
         self.finished.emit()
 
