@@ -53,6 +53,7 @@ class Flight(QObject):
             `kwargs` are additional parameters when cal_path is specified.
             These are as follows:
             `cam_index`: index of a live camera. Required when `is_live` is True.
+            `audio_index`: index of audio capture device. Required when `is_live` is True.
             `live_fps`: frame rate of live input video.
             `enable_decimator`: decimate input rate by 1/2. Applicable when
                                    `is_live` is True. Defaults to False.
@@ -80,12 +81,18 @@ class Flight(QObject):
         self.is_located = False
         self.is_ar_enabled = True
         cam_index = kwargs.pop('cam_index', None)
+        audio_index = kwargs.pop('audio_index', None)
         if self.is_live:
             try:
                 cam_index = int(cam_index)
             except ValueError as exc:
                 raise exc from ValueError('A valid camera index is required for live video.')
+            try:
+                audio_index = int(audio_index)
+            except ValueError as exc:
+                raise exc from ValueError('A valid audio index is required for live video.')
         self.cam_index = cam_index
+        self.audio_index = audio_index
         self.live_fps = kwargs.pop('live_fps', None)
         if self.is_live and self.live_fps is None:
             raise ValueError('No frame rate selected for live video.')

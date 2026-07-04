@@ -53,6 +53,11 @@ class AudioProcessor(QObject):
         self.audio_path = new_name.with_suffix('.wav')
         log.debug(f'New audio file path is: {self.audio_path}')
 
+    # def on_new_device(self, new_dev_idx: int):
+    #     '''New device index for audio capture is available.'''
+    #     log.debug(f'New audio input device index: {new_dev_idx}')
+    #     self.input_device_index = new_dev_idx
+
     def run(self):
         '''Prepare audio stream for recording.'''
         try:

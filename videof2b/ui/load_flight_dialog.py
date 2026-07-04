@@ -184,6 +184,7 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
             return None  # Keeps the window up
         is_live = self.live_chk.isChecked()
         video_path = self.video_path_txt.path
+        audio_idx = None
         cam_idx = None
         live_fps_value = None
         use_mru_cam_loc = self.use_mru_cam_location.isChecked()
@@ -192,10 +193,12 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         marker_radius = float(self.marker_radius_txt.text())
         marker_height = float(self.marker_height_txt.text())
         if is_live:
-            box_idx = self.live_device_list.currentIndex()
-            cam_idx = self.live_device_list.itemData(box_idx)
+            vbox_idx = self.live_device_list.currentIndex()
+            cam_idx = self.live_device_list.itemData(vbox_idx)
+            abox_idx = self.live_audio_dev_list.currentIndex()
+            audio_idx = self.live_audio_dev_list.itemData(abox_idx)
             self.settings.setValue('mru/live_device_idx', cam_idx)
-            self.settings.setValue('mru/live_device_name', self.live_device_list.itemText(box_idx))
+            self.settings.setValue('mru/live_device_name', self.live_device_list.itemText(vbox_idx))
             self.settings.setValue('mru/live_video_input_fps_idx', self.live_rates_list.currentIndex())
             video_path = Path(self.live_name_txt.text())
             live_fps_value = self._video_input_rates[self.live_rates_list.currentIndex()]
@@ -213,6 +216,7 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
             is_live=is_live,
             cal_path=self.cal_path_txt.path,
             cam_index=cam_idx,
+            audio_index=audio_idx,
             live_fps=live_fps_value,
             enable_decimator=self.is_live_decimator_enabled,
             skip_locate=self.skip_locate_chk.isChecked(),

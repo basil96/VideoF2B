@@ -521,7 +521,7 @@ class MainWindow(QtWidgets.QMainWindow, UIMainWindow, StoreProperties):
 
     def _init_audio_proc(self):
         '''Initialize the audio processor (used during live video only).'''
-        self._audio_proc = AudioProcessor(input_device_index=1)
+        self._audio_proc = AudioProcessor(input_device_index=self._last_flight.audio_index)
         # Connect signals that communicate between threads.
         self.stop_processor.connect(self._audio_proc.stop, QtCore.Qt.QueuedConnection)
         self.start_live_recording.connect(self._audio_proc.start, QtCore.Qt.QueuedConnection)
