@@ -60,11 +60,32 @@ The latest versions of these regulations are available at the
 ### Linux
 
 - Build OpenCV for the virtual environment based on the instructions [here](https://www.pyimagesearch.com/2018/08/15/how-to-install-opencv-4-on-ubuntu/).
+- Current alternative: The package `opencv-python` is available for Linux as well. The runtime needs the `xcb` system libraries.
+  Install the following system packages to support it:
+  ```
+  sudo apt install -y \
+    libxcb-xinerama0 \
+    libxcb-cursor0 \
+    libxkbcommon-x11-0 \
+    libxcb-icccm4 \
+    libxcb-image0 \
+    libxcb-keysyms1 \
+    libxcb-randr0 \
+    libxcb-render-util0 \
+    libxcb-shape0 \
+    libxcb-sync1 \
+    libxcb-xfixes0 \
+    libxcb-xkb1
+  ```
 
 ## Building a release
 
-- **IMPORTANT:** Create a clean virtual environment.  Do not update `setuptools` in it. Verify that
-  `setuptools` version is `56.0.0` via `pip show setuptools`.
+- ~~**IMPORTANT:** Create a clean virtual environment.  Do not update `setuptools` in it. Verify that
+  `setuptools` version is `56.0.0` via `pip show setuptools`.~~
+
+- The above note no longer seems to be an issue on Linux.
+
+- Test the same on Windows.
 
 - Tag the latest stable commit in `master` with the desired version using a scheme that complies with PEP 440.
 

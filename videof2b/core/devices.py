@@ -106,8 +106,7 @@ class AudioDevice:
                 devices.append({'device_index': dev_index, 'device_name': dev_name})
 
         elif is_linux():
-            # TODO
-            pass
+            log.warning('TODO: enumerate audio devices on Linux')
 
         return devices
 
