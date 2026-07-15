@@ -50,6 +50,12 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         59.94,
         60.,
     )
+    # Video input resolutions
+    # TODO: enumerate these per video device on demand at runtime.
+    _video_input_resx = (
+        (720, 480),
+        (1920, 1080),
+    )
 
     def __init__(self, parent) -> None:
         '''Constructor.'''
@@ -89,7 +95,12 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         use_mru_cam_loc = self.settings.value('mru/use_cam_loc')
         self.live_chk = QtWidgets.QCheckBox('&Live video', self)
         self.live_device_list = QtWidgets.QComboBox(self)
+        self.live_audio_dev_lbl = QtWidgets.QLabel('Input audio device:', self)
         self.live_audio_dev_list = QtWidgets.QComboBox(self)
+        self.live_resx_lbl = QtWidgets.QLabel('Input resolution:', self)
+        self.live_resx_list = QtWidgets.QComboBox(self)
+        for (w, h) in LoadFlightDialog._video_input_resx:
+            self.live_resx_list.addItem(f"{w:.0f} x {h:.0f}", userData=(w, h))
         self.live_rates_lbl = QtWidgets.QLabel('Input frame rate:', self)
         self.live_rates_list = QtWidgets.QComboBox(self)
         self.live_rates_list.addItems([str(x) for x in self._video_input_rates])
@@ -160,7 +171,10 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         self.main_layout.addWidget(self.live_chk)
         self.main_layout.addWidget(self.video_path_lbl)
         self.main_layout.addWidget(self.live_device_list)
+        self.main_layout.addWidget(self.live_audio_dev_lbl)
         self.main_layout.addWidget(self.live_audio_dev_list)
+        self.main_layout.addWidget(self.live_resx_lbl)
+        self.main_layout.addWidget(self.live_resx_list)
         self.main_layout.addWidget(self.live_rates_lbl)
         self.main_layout.addWidget(self.live_rates_list)
         self.main_layout.addWidget(self.live_decimate_chk)
@@ -186,6 +200,7 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         video_path = self.video_path_txt.path
         audio_idx = None
         cam_idx = None
+        cam_res = None
         live_fps_value = None
         use_mru_cam_loc = self.use_mru_cam_location.isChecked()
         # TODO: use proper validation for these numeric fields!
@@ -195,10 +210,13 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         if is_live:
             vbox_idx = self.live_device_list.currentIndex()
             cam_idx = self.live_device_list.itemData(vbox_idx)
+            cam_res_idx = self.live_resx_list.currentIndex()
+            cam_res = self.live_resx_list.itemData(cam_res_idx)
             abox_idx = self.live_audio_dev_list.currentIndex()
             audio_idx = self.live_audio_dev_list.itemData(abox_idx)
             self.settings.setValue('mru/live_device_idx', cam_idx)
             self.settings.setValue('mru/live_device_name', self.live_device_list.itemText(vbox_idx))
+            self.settings.setValue('mru/live_device_res_idx', cam_res_idx)
             self.settings.setValue('mru/live_video_input_fps_idx', self.live_rates_list.currentIndex())
             video_path = Path(self.live_name_txt.text())
             live_fps_value = self._video_input_rates[self.live_rates_list.currentIndex()]
@@ -216,6 +234,7 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
             is_live=is_live,
             cal_path=self.cal_path_txt.path,
             cam_index=cam_idx,
+            cam_res = cam_res,
             audio_index=audio_idx,
             live_fps=live_fps_value,
             enable_decimator=self.is_live_decimator_enabled,

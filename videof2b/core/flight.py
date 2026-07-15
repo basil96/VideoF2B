@@ -53,6 +53,8 @@ class Flight(QObject):
             `kwargs` are additional parameters when cal_path is specified.
             These are as follows:
             `cam_index`: index of a live camera. Required when `is_live` is True.
+            `cam_res`: resolution of the live camera as a tuple (width, height).
+                       If None, use device default resolution.
             `audio_index`: index of audio capture device. Required when `is_live` is True.
             `live_fps`: frame rate of live input video.
             `enable_decimator`: decimate input rate by 1/2. Applicable when
@@ -81,6 +83,7 @@ class Flight(QObject):
         self.is_located = False
         self.is_ar_enabled = True
         cam_index = kwargs.pop('cam_index', None)
+        self.cam_res = kwargs.pop('cam_res', None)
         audio_index = kwargs.pop('audio_index', None)
         if self.is_live:
             try:
@@ -155,7 +158,7 @@ class Flight(QObject):
                 video_path = self.cam_index
         log.info(f'frame buffer = {frame_buffer}')
         # TODO: this could be a PR for imutils. `FileVideoStream`` could take `buffer_time` in constructor, obtain the FPS during init, and calculate its internal `queue_size`.
-        self.cap = FileVideoStream(video_path, queue_size=frame_buffer).start()
+        self.cap = FileVideoStream(video_path, queue_size=frame_buffer, size=self.cam_res).start()
         # Check if we succeeded.
         if self.cap.isOpened():
             self.is_ready = True
