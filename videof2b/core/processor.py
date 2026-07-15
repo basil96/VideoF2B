@@ -180,7 +180,7 @@ class VideoProcessor(QObject, StoreProperties):
         self.is_recording = True
         # The offset between audio and video streams, in seconds.
         # Appears to be more or less constant for all practical purposes.
-        self._AUDIO_SYNC_OFFSET = 0.370
+        self._AUDIO_SYNC_OFFSET = 0.0
         # Drop this many frames to sync with live audio. Calculated during live capture based on framerate.
         self._num_sync_frames = 0
         # ======================================================================
