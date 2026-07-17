@@ -53,7 +53,7 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
     # Video input resolutions
     # TODO: enumerate these per video device on demand at runtime.
     _video_input_resx = (
-        (720, 480),
+        # (720, 480),
         (1920, 1080),
     )
 
