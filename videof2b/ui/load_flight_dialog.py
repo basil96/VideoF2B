@@ -53,7 +53,8 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
     # Video input resolutions
     # TODO: enumerate these per video device on demand at runtime.
     _video_input_resx = (
-        # (720, 480),
+        (640, 480),
+        (720, 480),
         (1920, 1080),
     )
 
@@ -101,6 +102,7 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         self.live_resx_list = QtWidgets.QComboBox(self)
         for (w, h) in LoadFlightDialog._video_input_resx:
             self.live_resx_list.addItem(f"{w:.0f} x {h:.0f}", userData=(w, h))
+        self.live_resx_list.setCurrentIndex(self.settings.value('mru/live_video_resx_idx'))
         self.live_rates_lbl = QtWidgets.QLabel('Input frame rate:', self)
         self.live_rates_list = QtWidgets.QComboBox(self)
         self.live_rates_list.addItems([str(x) for x in self._video_input_rates])
@@ -217,6 +219,7 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
             self.settings.setValue('mru/live_device_idx', cam_idx)
             self.settings.setValue('mru/live_device_name', self.live_device_list.itemText(vbox_idx))
             self.settings.setValue('mru/live_device_res_idx', cam_res_idx)
+            self.settings.setValue('mru/live_video_resx_idx', self.live_resx_list.currentIndex())
             self.settings.setValue('mru/live_video_input_fps_idx', self.live_rates_list.currentIndex())
             video_path = Path(self.live_name_txt.text())
             live_fps_value = self._video_input_rates[self.live_rates_list.currentIndex()]

@@ -46,7 +46,8 @@ class Settings(QSettings):
         'mru/live_device_idx': 0,
         'mru/live_device_name': '',
         'mru/live_device_res_idx': 0,
-        'mru/live_video_input_fps_idx': 6,
+        'mru/live_video_resx_idx': 2,
+        'mru/live_video_input_fps_idx': 4,
         # Last successful cam locating points
         'mru/use_cam_loc': False,
         'mru/cam_loc_pts': [],
