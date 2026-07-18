@@ -237,7 +237,7 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
             is_live=is_live,
             cal_path=self.cal_path_txt.path,
             cam_index=cam_idx,
-            cam_res = cam_res,
+            cam_res=cam_res,
             audio_index=audio_idx,
             live_fps=live_fps_value,
             enable_decimator=self.is_live_decimator_enabled,
@@ -316,7 +316,10 @@ class LoadFlightDialog(QtWidgets.QDialog, StoreProperties):
         '''Update UI when the state of the "is live" checkbox changes.'''
         is_live = self.live_chk.isChecked()
         self.live_device_list.setVisible(is_live)
+        self.live_audio_dev_lbl.setVisible(is_live)
         self.live_audio_dev_list.setVisible(is_live)
+        self.live_resx_lbl.setVisible(is_live)
+        self.live_resx_list.setVisible(is_live)
         self.live_rates_lbl.setVisible(is_live)
         self.live_rates_list.setVisible(is_live)
         self.live_decimate_chk.setVisible(is_live)
