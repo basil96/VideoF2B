@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # VideoF2B - Draw F2B figures from video
-# Copyright (C) 2021 - 2022  Andrey Vasilik - basil96
+# Copyright (C) 2021 - 2026  Andrey Vasilik - basil96
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -91,8 +91,25 @@ class UIMainWindow:
             self.chk_over_eight,
             self.chk_clover,
         )
-        for fig_chk in self.fig_chk_boxes:
+        self.fig_chk_keys = (
+            QtCore.Qt.Key_1,
+            QtCore.Qt.Key_2,
+            QtCore.Qt.Key_3,
+            QtCore.Qt.Key_4,
+            QtCore.Qt.Key_5,
+            QtCore.Qt.Key_6,
+            QtCore.Qt.Key_7,
+            QtCore.Qt.Key_8,
+            QtCore.Qt.Key_9,
+        )
+        self.fig_chk_actions = []
+        for i, fig_chk in enumerate(self.fig_chk_boxes):
             self.pnl_chk.addWidget(fig_chk)
+            action = QtGui.QAction(main_window)
+            action.setShortcut(self.fig_chk_keys[i])
+            self.fig_chk_actions.append(action)
+            main_window.addAction(action)
+
 
         def get_vspacer():
             '''This spacer provides some vertical spacing around the separators.'''
@@ -363,6 +380,8 @@ class MainWindow(QtWidgets.QMainWindow, UIMainWindow, StoreProperties):
         self.act_tools_cal_cam.triggered.connect(self.on_calibrate_cam)
         self.act_tools_place_cam.triggered.connect(self.on_place_cam)
         self.act_next_figure.triggered.connect(self.on_next_figure)
+        for action in self.fig_chk_actions:
+            action.triggered.connect(self.on_chk_figure_toggled)
         self.act_pause_resume.setEnabled(False)
         self._enable_figure_controls(False)
         self.act_help_about.triggered.connect(self.on_help_about)
@@ -843,6 +862,11 @@ class MainWindow(QtWidgets.QMainWindow, UIMainWindow, StoreProperties):
         '''Mark the end of a figure in 3D. '''
         log.debug('User says: END FIGURE')
         self.figure_mark.emit(False)
+
+    def on_chk_figure_toggled(self):
+        sender = self.sender()
+        self.fig_chk_boxes[self.fig_chk_actions.index(sender)].toggle()
+
 
     def on_next_figure(self):
         '''
