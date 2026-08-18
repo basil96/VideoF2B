@@ -258,22 +258,6 @@ Glossary
 
 .. glossary::
 
-    Figure
-        A shape that makes up a separately recognizable complete part of a whole :term:`maneuver`. For
-        example, the first loop of the three consecutive inside loops maneuver is referred to as a
-        :term:`figure`; but the first loop that makes the first half of the first complete figure eight in the
-        "two consecutive overhead eight" maneuver is not referred to as a figure.
-
-    Great circle
-        The nontrivial intersection of a plane and a :term:`sphere` such that the plane contains the center of
-        the sphere.
-
-    Maneuver
-        The full total of :term:`figures <figure>` and :term:`segments <segment>` necessary to complete the
-        maneuver marked under a separate numbered heading with bold type in the Rules. For example, the
-        take-off maneuver, the "three consecutive inside loops" maneuver, and the single "four-leaf clover"
-        maneuver, are all referred to as a single whole maneuver.
-
     Right circular cone
         The commonly assumed instance of a cone_ in elementary geometry. *Circular* means that the base of the
         cone is a circle. *Right* means that the axis of the cone passes through the center of the base at
@@ -283,18 +267,6 @@ Glossary
         A surface :math:`S` is ruled if through every point of :math:`S` there is a straight line that lies on
         :math:`S`. The plane and the lateral surface of a :term:`cone <right circular cone>` are examples of
         `ruled surfaces <ruled-surface_>`_.
-
-    Segment
-        A specifically defined part of a :term:`figure` (or of a whole :term:`maneuver`) in which certain
-        particular points are detailed. For example, the first loop which makes the first half of the first
-        complete figure eight in the "two consecutive overhead eight" maneuver is referred to as a segment.
-
-    Small circle
-        The nontrivial intersection of a plane and a :term:`sphere` such that the plane does not contain the
-        center of the sphere.
-
-    Sphere
-        A solid bounded by a surface every point of which is equally distant from a fixed point.
 
 References
 ==========
