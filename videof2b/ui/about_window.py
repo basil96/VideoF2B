@@ -65,12 +65,12 @@ class AboutDialog(QtWidgets.QDialog):
         <li><p>Draws an augmented-reality (AR) hemisphere that represents the flight envelope.</p>
         </li>
         <li><p>Displays template figures on the surface of the AR sphere according to
-        Section 4.2.15 - &quot;Description of Manoeuvres&quot; of the
-        <a href="https://www.fai.org/sites/default/files/sc4_vol_f2_controlline_22.pdf">FAI Sporting Code (Jan 2022)</a>.
+        Paragraph F2B.13 - &quot;Description of Manoeuvres&quot; of the
+        <a href="https://www.fai.org/sites/default/files/document/file/SC4_volume_F2_ControlLine_2026_1.pdf">FAI Sporting Code (Edition 2026)</a>.
         Maneuvre diagrams are available in
-        <a href="https://www.fai.org/sites/default/files/sc4_vol_f2_controlline_annex_4j_22.pdf">Annex 4J (Jan 2022)</a>
+        <a href="https://www.fai.org/sites/default/files/2026-05/sc4_vol_f2_controlline_annex_4j_26.pdf">Annex 4J (Edition 2026)</a>
         The latest versions of these regulations are available at the
-        <a href="https://www.fai.org/page/ciam-code">FAI Sporting Code page</a> under <strong>Section 4 (Aeromodelling)</strong>.</p>
+        <a href="https://www.fai.org/page/sporting-code">FAI Sporting Code page</a> under <strong>Section 4 (Aeromodelling)</strong>.</p>
         </li>
         <li><p>Allows the user to rotate and translate the AR sphere during video processing.</p>
         </li>

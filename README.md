@@ -24,12 +24,12 @@ Online documentation is [here](http://videof2b.readthedocs.io/).
 - Draws an augmented-reality (AR) hemisphere that represents the flight envelope.
 
 - Displays template figures on the surface of the AR sphere according to
-Section 4.2.15 - "Description of Manoeuvres" of the
-[FAI Sporting Code (Edition 2024)](https://www.fai.org/sites/default/files/sc4_vol_f2_controlline_24.pdf).
+Paragraph F2B.13 - "Description of Manoeuvres" of the
+[FAI Sporting Code (Edition 2026)](https://www.fai.org/sites/default/files/document/file/SC4_volume_F2_ControlLine_2026_1.pdf).
 Manoeuvre diagrams are available in
-[Annex 4J (Edition 2024)](https://www.fai.org/sites/default/files/sc4_vol_f2_controlline_annex_4j_24.pdf)
+[Annex 4J (Edition 2026)](https://www.fai.org/sites/default/files/2026-05/sc4_vol_f2_controlline_annex_4j_26.pdf)
 The latest versions of these regulations are available at the
-[FAI Sporting Code page](https://www.fai.org/page/ciam-code) under **Section 4 (Aeromodelling)**.
+[FAI Sporting Code page](https://www.fai.org/page/sporting-code) under **Section 4 (Aeromodelling)**.
 
 - Allows the user to rotate and translate the AR sphere during video processing.
 
