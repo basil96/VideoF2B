@@ -59,10 +59,11 @@ The latest versions of these regulations are available at the
 
 ### Linux
 
-- Build OpenCV for the virtual environment based on the instructions [here](https://www.pyimagesearch.com/2018/08/15/how-to-install-opencv-4-on-ubuntu/), with two changes:
+- Build OpenCV **5.0.0** (matches the Windows `opencv-python==5.0.0.93` pin) for the virtual environment based on the instructions [here](https://www.pyimagesearch.com/2018/08/15/how-to-install-opencv-4-on-ubuntu/) — the guide predates OpenCV 5, but the same steps apply; just clone the `5.0.0` tag — with these changes:
   - Add `-D WITH_QT=OFF -D WITH_GTK=ON` to the `cmake` command (and install `libgtk-3-dev`). OpenCV's own bundled Qt plugins otherwise conflict with PySide6's at runtime.
   - On newer Ubuntu releases (26.04+), `libatlas-base-dev` is no longer packaged; use `libopenblas-dev liblapack-dev` instead.
   - Point `-D PYTHON3_EXECUTABLE` and `-D PYTHON3_PACKAGES_PATH` at your virtual environment's `python` and `site-packages` so the built `cv2` module installs directly into it.
+- **Do not substitute the `opencv-python` pip wheel on Linux**, even though it's tempting to skip the build. Its bundled static FFmpeg registers the `h264_v4l2m2m` hardware encoder (meant for ARM SBCs like Raspberry Pi) ahead of software `libx264`, so `cv2.VideoWriter` with the app's `H264` fourcc fails outright on any machine without that hardware (`VIDEOIO/FFMPEG: Failed to initialize VideoWriter`) — video export is broken, even though calibration and playback look fine. Building from source links the system's real FFmpeg and doesn't hit this.
 
 ## Building a release
 
