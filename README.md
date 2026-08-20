@@ -59,18 +59,26 @@ The latest versions of these regulations are available at the
 
 ### Linux
 
-- Build OpenCV for the virtual environment based on the instructions [here](https://www.pyimagesearch.com/2018/08/15/how-to-install-opencv-4-on-ubuntu/).
+- Build OpenCV for the virtual environment based on the instructions [here](https://www.pyimagesearch.com/2018/08/15/how-to-install-opencv-4-on-ubuntu/), with two changes:
+  - Add `-D WITH_QT=OFF -D WITH_GTK=ON` to the `cmake` command (and install `libgtk-3-dev`). OpenCV's own bundled Qt plugins otherwise conflict with PySide6's at runtime.
+  - On newer Ubuntu releases (26.04+), `libatlas-base-dev` is no longer packaged; use `libopenblas-dev liblapack-dev` instead.
+  - Point `-D PYTHON3_EXECUTABLE` and `-D PYTHON3_PACKAGES_PATH` at your virtual environment's `python` and `site-packages` so the built `cv2` module installs directly into it.
 
 ## Building a release
 
 - **IMPORTANT:** Create a clean virtual environment.  Do not update `setuptools` in it. Verify that
-  `setuptools` version is `56.0.0` via `pip show setuptools`.
+  `setuptools` version is `56.0.0` via `pip show setuptools`. (This applies to the legacy Python 3.8/3.9 toolchain; a modernized stack on Python 3.14 has been verified to build correctly with setuptools 84.0.0 instead.)
+
+- Install `python3-tk` and `libxcb-cursor0` (Linux) before building. PyInstaller's splash screen requires `tkinter` to be importable in the build environment's Python, and the frozen app needs `libxcb-cursor.so.0` at runtime for Qt's `xcb` platform plugin. Without these, `build_exe` fails or the resulting binary won't run on a machine that lacks them.
 
 - Tag the latest stable commit in `master` with the desired version using a scheme that complies with PEP 440.
 
 - Switch to the project's root directory.
 
-- Enter the project's virtual environment.
+- Enter (activate) the project's virtual environment. This must be a real shell activation
+  (e.g. `source .venv/bin/activate`), not just invoking `.venv/bin/python` directly — `build_exe`
+  shells out to the `pyinstaller` command by name, which is only found if the venv's `bin`
+  directory is on `PATH`.
 
 - Run the following commands:
 
