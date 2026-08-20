@@ -266,7 +266,12 @@ class CameraCalibrator(QObject):
         log.debug(f'num_objpoints = {num_objpoints}')
         for i in range(num_objpoints):
             imgpoints2, _ = cv2.projectPoints(objpoints[i], rvecs[i], tvecs[i], mtx, dist)
-            error = cv2.norm(src1=imgpoints[i], src2=imgpoints2, normType=cv2.NORM_L2) / len(imgpoints2)
+            # `imgpoints[i]` and `imgpoints2` may come back with different shapes/types
+            # (e.g. (N, 2) CV_32FC1 vs. (N, 1, 2) CV_32FC2) depending on the OpenCV version;
+            # normalize both to (N, 1, 2) so cv2.norm's type check doesn't reject them.
+            src1 = np.asarray(imgpoints[i], dtype=np.float32).reshape(-1, 1, 2)
+            src2 = np.asarray(imgpoints2, dtype=np.float32).reshape(-1, 1, 2)
+            error = cv2.norm(src1=src1, src2=src2, normType=cv2.NORM_L2) / len(imgpoints2)
             tot_error += error
         mean_reproj_err = tot_error / num_objpoints
         mre_msg = f'Mean reprojection error = {mean_reproj_err:6.4f} px'
