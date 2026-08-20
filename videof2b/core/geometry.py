@@ -342,7 +342,7 @@ def calc_equilateral_sigma(height: Optional[float] = QUART_PI) -> float:
     :return: side angle :math:`\sigma`, in radians.
     '''
     def root_finder(sigma):
-        return get_equilateral_height(sigma) - height
+        return get_equilateral_height(np.asarray(sigma).item()) - height
     ret = fsolve(root_finder, QUART_PI)
     sigma = ret[0]
     return sigma
@@ -380,6 +380,7 @@ def calc_tri_loop_params(R: float, r: float, target_elev: Optional[float] = QUAR
         Called by an optimizer in the enclosing function.
         '''
         nonlocal phi
+        sigma = np.asarray(sigma).item()
         # Angle between adjacent sides of the triangle
         phi = get_equilateral_phi(sigma)
         # Angle between axis of corner cone and intersection line of the two planes where the cone falls
